@@ -36,3 +36,4 @@ mlruns/
 *.tfstate
 *.tfstate.backup
 logs/
+sudo dpkg*
