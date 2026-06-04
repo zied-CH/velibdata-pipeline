@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: stg_station_status
+    description: "Donnees de disponibilite nettoyees et typees"
+    columns:
+      - name: station_id
+        description: "Identifiant unique de la station"
+        tests:
+          - not_null
+      - name: station_code
+        description: "Code court de la station"
+        tests:
+          - not_null
+      - name: bikes_available
+        description: "Nombre total de velos disponibles"
+        tests:
+          - not_null
+      - name: docks_available
+        description: "Nombre de bornes libres"
+        tests:
+          - not_null
+
+  - name: stg_station_info
+    description: "Referentiel des stations nettoye"
+    columns:
+      - name: station_id
+        description: "Identifiant unique de la station"
+        tests:
+          - not_null
+          - unique
+      - name: station_name
+        description: "Nom de la station"
+        tests:
+          - not_null
+      - name: latitude
+        description: "Coordonnee GPS latitude"
+        tests:
+          - not_null
+      - name: longitude
+        description: "Coordonnee GPS longitude"
+        tests:
+          - not_null
+
+  - name: stg_weather
+    description: "Donnees meteo nettoyees"
+    columns:
+      - name: measured_at
+        description: "Horodatage de la mesure"
+        tests:
+          - not_null
+      - name: temperature_celsius
+        description: "Temperature en degres Celsius"
+        tests:
+          - not_null

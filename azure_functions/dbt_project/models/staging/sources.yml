@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: "Donnees brutes ingérées depuis les APIs Velib et Open-Meteo"
+    database: velibdata
+    schema: bronze
+    tables:
+      - name: station_status
+        description: "Statut temps reel des stations (disponibilite velos/bornes)"
+      - name: station_info
+        description: "Referentiel des stations (nom, adresse, coordonnees, capacite)"
+      - name: weather
+        description: "Donnees meteo horaires pour Paris (Open-Meteo)"
