@@ -27,6 +27,16 @@ resource "azurerm_monitor_action_group" "team" {
     email_address           = var.alert_email
     use_common_alert_schema = true
   }
+
+  # Teams webhook — activé uniquement si teams_webhook_url est fourni
+  dynamic "webhook_receiver" {
+    for_each = var.teams_webhook_url != "" ? [1] : []
+    content {
+      name                    = "teams-channel"
+      service_uri             = var.teams_webhook_url
+      use_common_alert_schema = true
+    }
+  }
 }
 
 # ── Alert: aucune transaction ADLS détectée → pipeline down ─────
@@ -142,5 +152,37 @@ resource "azurerm_consumption_budget_resource_group" "velibdata" {
     operator       = "GreaterThan"
     threshold_type = "Actual"
     contact_emails = [var.alert_email]
+  }
+
+  notification {
+    enabled        = true
+    threshold      = 100
+    operator       = "GreaterThan"
+    threshold_type = "Actual"
+    contact_emails = [var.alert_email]
+  }
+}
+
+# ── Alert: capacité ADLS > 5 GB — croissance anormale ────────────
+# Seuil adapté au projet étudiant Vélib (~50 MB/jour attendu)
+resource "azurerm_monitor_metric_alert" "storage_capacity" {
+  name                = "alert-adls-capacity"
+  resource_group_name = var.resource_group_name
+  scopes              = [var.storage_account_id]
+  severity            = 2
+  frequency           = "PT1H"
+  window_size         = "PT1H"
+  description         = "WARNING: Volume ADLS Gen2 depasse 5 GB — croissance anormale detectee"
+
+  criteria {
+    metric_namespace = "Microsoft.Storage/storageAccounts"
+    metric_name      = "UsedCapacity"
+    aggregation      = "Average"
+    operator         = "GreaterThan"
+    threshold        = 5368709120 # 5 GB en octets
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.team.id
   }
 }

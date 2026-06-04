@@ -54,6 +54,7 @@ module "monitoring" {
   eventhub_namespace_id = module.eventhubs.eventhub_namespace_id
   storage_account_id    = module.storage.storage_account_id
   alert_email           = var.alert_email
+  teams_webhook_url     = var.teams_webhook_url
   budget_amount         = var.budget_amount
   budget_start_date     = var.budget_start_date
 

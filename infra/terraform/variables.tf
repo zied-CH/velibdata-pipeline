@@ -50,3 +50,10 @@ variable "budget_start_date" {
   type        = string
   default     = "2026-05-01T00:00:00Z"
 }
+
+variable "teams_webhook_url" {
+  description = "Microsoft Teams incoming webhook URL for critical alerts (optional)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

@@ -10,6 +10,7 @@ import time
 from datetime import UTC, datetime
 
 from azure.storage.filedatalake import DataLakeServiceClient
+from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 from src.ingestion.velib_client import fetch_station_info, fetch_station_status, fetch_weather
 from src.quality.checks import validate_station_payload, validate_weather_payload
@@ -53,8 +54,17 @@ def _write_bronze(data: dict, source: str) -> str:
     return path
 
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(min=30, max=120),
+    before_sleep=before_sleep_log(logger, "warning"),
+    reraise=True,
+)
 async def run_ingestion() -> None:
-    """Execute un cycle d ingestion complet vers ADLS Bronze."""
+    """Execute un cycle d ingestion complet vers ADLS Bronze.
+
+    Relance automatiquement jusqu'a 3 fois en cas d'echec (attente 30s → 60s → 120s).
+    """
     cycle_start = time.monotonic()
     logger.info("ingestion_cycle_start", target="adls_gen2")
 
