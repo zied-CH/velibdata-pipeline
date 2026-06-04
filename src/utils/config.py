@@ -1,8 +1,7 @@
 """Configuration centralisee du projet VelibData.
 
 Usage:
-    from src.utils.config import api_settings
-    print(api_settings.velib_station_status_url)
+    from src.utils.config import api_settings, azure_settings
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,4 +16,15 @@ class APISettings(BaseSettings):
     log_level: str = "INFO"
 
 
+class AzureSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    adls_account_name: str = ""
+    adls_account_key: str = ""
+    adls_container_bronze: str = "bronze"
+    adls_container_silver: str = "silver"
+    adls_container_gold: str = "gold"
+
+
 api_settings = APISettings()
+azure_settings = AzureSettings()
