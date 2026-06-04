@@ -3,3 +3,5 @@ azure-storage-file-datalake>=12.14.0
 azure-identity>=1.15.0
 httpx>=0.27.0
 pyodbc>=5.0.0
+dbt-core==1.8.9
+dbt-sqlserver==1.8.5
