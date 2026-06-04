@@ -63,3 +63,13 @@ output "log_analytics_workspace_id" {
   description = "Log Analytics workspace ID — used for dbt Cloud logging (give to teammate)"
   value       = module.monitoring.log_analytics_workspace_id
 }
+
+output "databricks_workspace_url" {
+  description = "URL du workspace Databricks — ouvrir dans le navigateur"
+  value       = module.databricks.databricks_workspace_url
+}
+
+output "purview_catalog_endpoint" {
+  description = "URL du catalogue Purview — visualiser le Data Lineage et les datasets"
+  value       = module.purview.purview_catalog_endpoint
+}

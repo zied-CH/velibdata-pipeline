@@ -60,3 +60,29 @@ module "monitoring" {
 
   depends_on = [module.foundation, module.storage]
 }
+
+module "databricks" {
+  source = "./modules/databricks"
+
+  resource_group_name        = var.resource_group_name
+  location                   = var.location
+  storage_account_id         = module.storage.storage_account_id
+  storage_account_name       = var.storage_account_name
+  key_vault_id               = module.foundation.key_vault_id
+  databricks_workspace_name  = var.databricks_workspace_name
+  log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
+  action_group_id            = module.monitoring.action_group_id
+
+  depends_on = [module.monitoring, module.storage]
+}
+
+module "purview" {
+  source = "./modules/purview"
+
+  resource_group_name  = var.resource_group_name
+  location             = var.location
+  storage_account_id   = module.storage.storage_account_id
+  purview_account_name = var.purview_account_name
+
+  depends_on = [module.storage]
+}

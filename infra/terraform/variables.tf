@@ -51,6 +51,18 @@ variable "budget_start_date" {
   default     = "2026-05-01T00:00:00Z"
 }
 
+variable "databricks_workspace_name" {
+  description = "Name of the Azure Databricks workspace"
+  type        = string
+  default     = "dbw-velib-1c53"
+}
+
+variable "purview_account_name" {
+  description = "Name of the Microsoft Purview account (must be globally unique)"
+  type        = string
+  default     = "pview-velib-1c53"
+}
+
 variable "teams_webhook_url" {
   description = "Microsoft Teams incoming webhook URL for critical alerts (optional)"
   type        = string

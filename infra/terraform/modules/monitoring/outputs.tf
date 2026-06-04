@@ -16,3 +16,8 @@ output "log_analytics_workspace_id" {
 output "log_analytics_workspace_name" {
   value = azurerm_log_analytics_workspace.velibdata.name
 }
+
+output "action_group_id" {
+  description = "Action Group ID — pass to Databricks module for job failure alerts"
+  value       = azurerm_monitor_action_group.team.id
+}
