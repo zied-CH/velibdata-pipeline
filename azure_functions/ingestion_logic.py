@@ -1,7 +1,6 @@
 """Logique d ingestion adaptee pour Azure Functions.
 
-Reprend la logique de src/ingestion mais sans la dependance a pydantic-settings
-(les variables d environnement sont lues directement via os.environ).
+Resilience : si la meteo echoue (API down), on continue avec Velib uniquement.
 """
 
 import json
@@ -27,19 +26,15 @@ def _get_adls_client() -> DataLakeServiceClient:
 
 
 def _write_bronze(data: dict, source: str) -> str:
-    """Ecrit les donnees brutes en JSON dans ADLS Bronze."""
     now = datetime.now(UTC)
     timestamp = now.strftime("%Y%m%d_%H%M%S")
     path = f"{source}/year={now.year}/month={now.month:02d}/day={now.day:02d}/{source}_{timestamp}.json"
-
     service = _get_adls_client()
     fs = service.get_file_system_client(os.environ.get("ADLS_CONTAINER_BRONZE", "bronze"))
     file_client = fs.get_file_client(path)
-
     json_data = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
     file_client.upload_data(json_data, overwrite=True)
-
-    logger.info(f"bronze_written: {path} ({len(json_data) / 1024:.1f} KB)")
+    logger.info(f"bronze_written: {path}")
     return path
 
 
@@ -72,13 +67,12 @@ async def fetch_station_info() -> dict:
 
 
 async def fetch_weather() -> dict:
+    """Recupere la meteo - leve une exception si echec."""
     params = {
-        "latitude": 48.8566,
-        "longitude": 2.3522,
+        "latitude": 48.8566, "longitude": 2.3522,
         "current": "temperature_2m,precipitation,windspeed_10m,weathercode",
         "hourly": "temperature_2m,precipitation,windspeed_10m,weathercode",
-        "timezone": "Europe/Paris",
-        "forecast_days": 1,
+        "timezone": "Europe/Paris", "forecast_days": 1,
     }
     async with httpx.AsyncClient(timeout=30) as client:
         response = await client.get(OPENMETEO_URL, params=params)
@@ -92,19 +86,24 @@ async def fetch_weather() -> dict:
 
 
 async def run_ingestion() -> dict:
-    """Execute un cycle d ingestion complet vers ADLS Bronze."""
+    """Cycle d ingestion resilient : meteo optionnelle."""
+    import asyncio
     logger.info("ingestion_cycle_start")
 
-    import asyncio
-    status, info, weather = await asyncio.gather(
-        fetch_station_status(),
-        fetch_station_info(),
-        fetch_weather(),
-    )
-
+    # Velib est critique - si ca echoue on arrete tout
+    status = await fetch_station_status()
+    info = await fetch_station_info()
     _write_bronze(status, "station_status")
     _write_bronze(info, "station_info")
-    _write_bronze(weather, "weather")
 
-    logger.info(f"ingestion_complete: {status['station_count']} stations")
-    return {"stations": status["station_count"]}
+    # Meteo optionnelle - on continue meme si echec
+    weather_status = "ok"
+    try:
+        weather = await fetch_weather()
+        _write_bronze(weather, "weather")
+    except Exception as e:
+        logger.warning(f"weather_fetch_failed (continuing without): {str(e)[:200]}")
+        weather_status = f"skipped: {str(e)[:100]}"
+
+    logger.info(f"ingestion_complete: {status['station_count']} stations, weather={weather_status}")
+    return {"stations": status["station_count"], "weather": weather_status}
