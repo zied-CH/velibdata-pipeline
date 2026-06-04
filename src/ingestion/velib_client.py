@@ -1,8 +1,10 @@
 """Client pour les APIs Velib Metropole et Open-Meteo."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
+
 from src.utils.config import api_settings
 from src.utils.logger import get_logger
 
@@ -22,7 +24,7 @@ async def fetch_station_status() -> dict:
 
     return {
         "source": "velib_station_status",
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "fetched_at": datetime.now(UTC).isoformat(),
         "station_count": len(stations),
         "stations": stations,
     }
@@ -41,7 +43,7 @@ async def fetch_station_info() -> dict:
 
     return {
         "source": "velib_station_info",
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "fetched_at": datetime.now(UTC).isoformat(),
         "station_count": len(stations),
         "stations": stations,
     }
@@ -67,6 +69,6 @@ async def fetch_weather(lat: float = 48.8566, lon: float = 2.3522) -> dict:
 
     return {
         "source": "open_meteo",
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "fetched_at": datetime.now(UTC).isoformat(),
         "data": payload,
     }
