@@ -29,20 +29,21 @@ resource "azurerm_monitor_action_group" "team" {
   }
 }
 
-# ── Alert: no messages in Event Hubs for 2+ min (ingestion lag)
-# CdC §4.3.2 — latence ingestion > 120s → CRITIQUE ─────────────
+# ── Alert: aucune transaction ADLS détectée → pipeline down ─────
+# Remplace l'ancienne alerte Event Hubs — pipeline écrit maintenant directement dans ADLS
+# CdC §4.3.2 — latence ingestion > 15 min → CRITIQUE ────────────
 resource "azurerm_monitor_metric_alert" "ingestion_lag" {
-  name                = "alert-ingestion-no-messages"
+  name                = "alert-adls-no-writes"
   resource_group_name = var.resource_group_name
-  scopes              = [var.eventhub_namespace_id]
+  scopes              = [var.storage_account_id]
   severity            = 0
   frequency           = "PT5M"
   window_size         = "PT15M"
-  description         = "CRITIQUE: No messages received in Event Hubs for 5 minutes — ingestion pipeline may be down"
+  description         = "CRITIQUE: Aucune transaction ADLS en 15 min — pipeline d'ingestion possiblement arrete"
 
   criteria {
-    metric_namespace = "Microsoft.EventHub/namespaces"
-    metric_name      = "IncomingMessages"
+    metric_namespace = "Microsoft.Storage/storageAccounts"
+    metric_name      = "Transactions"
     aggregation      = "Total"
     operator         = "LessThan"
     threshold        = 1
@@ -53,23 +54,53 @@ resource "azurerm_monitor_metric_alert" "ingestion_lag" {
   }
 }
 
-# ── Alert: high error rate in Event Hubs > 5%
-# CdC §4.3.2 — taux d'erreur API > 5% → CRITIQUE ──────────────
-resource "azurerm_monitor_metric_alert" "error_rate" {
-  name                = "alert-eventhub-errors"
+# ── Alert: taux d'erreurs ADLS élevé → problème d'accès ─────────
+# CdC §4.3.2 — taux d'erreur > 5 → CRITIQUE ─────────────────────
+resource "azurerm_monitor_metric_alert" "storage_errors" {
+  name                = "alert-adls-server-errors"
   resource_group_name = var.resource_group_name
-  scopes              = [var.eventhub_namespace_id]
+  scopes              = [var.storage_account_id]
   severity            = 0
   frequency           = "PT5M"
   window_size         = "PT15M"
-  description         = "CRITIQUE: Event Hubs error rate exceeds 5%"
+  description         = "CRITIQUE: Plus de 5 erreurs serveur ADLS en 15 min"
 
   criteria {
-    metric_namespace = "Microsoft.EventHub/namespaces"
-    metric_name      = "ServerErrors"
+    metric_namespace = "Microsoft.Storage/storageAccounts"
+    metric_name      = "Transactions"
     aggregation      = "Total"
     operator         = "GreaterThan"
     threshold        = 5
+
+    dimension {
+      name     = "ResponseType"
+      operator = "Include"
+      values   = ["ServerOtherError", "ServerBusyError"]
+    }
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.team.id
+  }
+}
+
+# ── Alert: disponibilité ADLS < 99.9% ───────────────────────────
+# SLA cible > 99.9% — CdC §4.3.3 ────────────────────────────────
+resource "azurerm_monitor_metric_alert" "storage_availability" {
+  name                = "alert-adls-availability"
+  resource_group_name = var.resource_group_name
+  scopes              = [var.storage_account_id]
+  severity            = 1
+  frequency           = "PT5M"
+  window_size         = "PT15M"
+  description         = "WARNING: Disponibilité ADLS Gen2 inférieure à 99.9%"
+
+  criteria {
+    metric_namespace = "Microsoft.Storage/storageAccounts"
+    metric_name      = "Availability"
+    aggregation      = "Average"
+    operator         = "LessThan"
+    threshold        = 99.9
   }
 
   action {

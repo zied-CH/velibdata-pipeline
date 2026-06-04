@@ -52,9 +52,10 @@ module "monitoring" {
   resource_group_id     = module.foundation.resource_group_id
   location              = var.location
   eventhub_namespace_id = module.eventhubs.eventhub_namespace_id
+  storage_account_id    = module.storage.storage_account_id
   alert_email           = var.alert_email
   budget_amount         = var.budget_amount
   budget_start_date     = var.budget_start_date
 
-  depends_on = [module.foundation]
+  depends_on = [module.foundation, module.storage]
 }

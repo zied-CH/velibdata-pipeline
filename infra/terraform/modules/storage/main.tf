@@ -40,6 +40,48 @@ resource "azurerm_role_assignment" "current_user_storage" {
   principal_id         = var.current_user_object_id
 }
 
+# ── Lifecycle Management: Hot → Cool → Archive ───────────────────
+# Bronze : données brutes conservées 1 an, hiérarchisées par coût
+# CdC §4.3.4 — optimisation coût stockage ────────────────────────
+resource "azurerm_storage_management_policy" "lifecycle" {
+  storage_account_id = azurerm_storage_account.velibdata.id
+
+  rule {
+    name    = "bronze-tiering"
+    enabled = true
+
+    filters {
+      prefix_match = ["bronze/"]
+      blob_types   = ["blockBlob"]
+    }
+
+    actions {
+      base_blob {
+        tier_to_cool_after_days_since_modification_greater_than    = 90
+        tier_to_archive_after_days_since_modification_greater_than = 180
+        delete_after_days_since_modification_greater_than          = 365
+      }
+    }
+  }
+
+  rule {
+    name    = "silver-tiering"
+    enabled = true
+
+    filters {
+      prefix_match = ["silver/"]
+      blob_types   = ["blockBlob"]
+    }
+
+    actions {
+      base_blob {
+        tier_to_cool_after_days_since_modification_greater_than    = 90
+        tier_to_archive_after_days_since_modification_greater_than = 365
+      }
+    }
+  }
+}
+
 # ── Store connection string in Key Vault (never hardcode it) ──
 resource "azurerm_key_vault_secret" "adls_connection_string" {
   name         = "adls-connection-string"

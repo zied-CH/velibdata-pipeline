@@ -6,11 +6,13 @@ Partitionne par date : bronze/{source}/year=YYYY/month=MM/day=DD/{source}_{times
 
 import asyncio
 import json
+import time
 from datetime import UTC, datetime
 
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from src.ingestion.velib_client import fetch_station_info, fetch_station_status, fetch_weather
+from src.quality.checks import validate_station_payload, validate_weather_payload
 from src.utils.config import azure_settings
 from src.utils.logger import get_logger
 
@@ -53,19 +55,46 @@ def _write_bronze(data: dict, source: str) -> str:
 
 async def run_ingestion() -> None:
     """Execute un cycle d ingestion complet vers ADLS Bronze."""
+    cycle_start = time.monotonic()
     logger.info("ingestion_cycle_start", target="adls_gen2")
 
-    status, info, weather = await asyncio.gather(
-        fetch_station_status(),
-        fetch_station_info(),
-        fetch_weather(),
-    )
+    try:
+        fetch_start = time.monotonic()
+        status, info, weather = await asyncio.gather(
+            fetch_station_status(),
+            fetch_station_info(),
+            fetch_weather(),
+        )
+        fetch_duration_s = round(time.monotonic() - fetch_start, 2)
+        logger.info("apis_fetched", duration_s=fetch_duration_s)
 
-    _write_bronze(status, "station_status")
-    _write_bronze(info, "station_info")
-    _write_bronze(weather, "weather")
+        # Controle qualite avant ecriture
+        validate_station_payload(status, "station_status")
+        validate_station_payload(info, "station_info")
+        validate_weather_payload(weather)
 
-    logger.info("ingestion_cycle_complete", stations=status["station_count"])
+        write_start = time.monotonic()
+        _write_bronze(status, "station_status")
+        _write_bronze(info, "station_info")
+        _write_bronze(weather, "weather")
+        write_duration_s = round(time.monotonic() - write_start, 2)
+
+        total_duration_s = round(time.monotonic() - cycle_start, 2)
+
+        logger.info(
+            "ingestion_cycle_complete",
+            stations=status["station_count"],
+            fetch_duration_s=fetch_duration_s,
+            write_duration_s=write_duration_s,
+            total_duration_s=total_duration_s,
+            # Alerte si > 5 min (300s) — seuil SLA ingestion
+            sla_ok=total_duration_s < 300,
+        )
+
+    except Exception:
+        total_duration_s = round(time.monotonic() - cycle_start, 2)
+        logger.exception("ingestion_cycle_failed", duration_s=total_duration_s)
+        raise
 
 
 def main() -> None:
