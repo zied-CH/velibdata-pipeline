@@ -37,6 +37,6 @@ mlruns/
 terraform.tfvars        # contains real secrets — use terraform.tfvars.example instead
 tfplan
 plan_output.txt
-.terraform.lock.hcl
+# .terraform.lock.hcl doit être commité — le gitignorer cause exit code 3 en CI
 logs/
 sudo dpkg*
