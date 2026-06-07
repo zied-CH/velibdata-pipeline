@@ -28,15 +28,12 @@ resource "azurerm_monitor_action_group" "team" {
     use_common_alert_schema = true
   }
 
-  # Teams webhook — activé uniquement si teams_webhook_url est fourni
-  dynamic "webhook_receiver" {
-    for_each = var.teams_webhook_url != "" ? [1] : []
-    content {
-      name                    = "teams-channel"
-      service_uri             = var.teams_webhook_url
-      use_common_alert_schema = true
-    }
-  }
+  # Teams webhook — ajouter manuellement quand l'URL est disponible :
+  # webhook_receiver {
+  #   name                    = "teams-channel"
+  #   service_uri             = var.teams_webhook_url
+  #   use_common_alert_schema = true
+  # }
 }
 
 # ── Alert: aucune transaction ADLS détectée → pipeline down ─────

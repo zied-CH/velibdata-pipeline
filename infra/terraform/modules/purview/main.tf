@@ -4,7 +4,7 @@
 resource "azurerm_purview_account" "velibdata" {
   name                = var.purview_account_name
   resource_group_name = var.resource_group_name
-  location            = var.location
+  location            = "northeurope"  # free tier Purview de ce tenant est en northeurope
 
   identity {
     type = "SystemAssigned"
