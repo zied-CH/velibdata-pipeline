@@ -1,0 +1,61 @@
+version: 2
+
+models:
+  - name: int_station_availability
+    description: "Disponibilite des stations enrichie avec geo et taux de remplissage"
+    columns:
+      - name: station_id
+        description: "Identifiant unique de la station"
+        tests:
+          - not_null
+      - name: fill_rate_pct
+        description: "Taux de remplissage en pourcentage (0-100)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: availability_status
+        description: "Statut de disponibilite categorise"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['empty', 'low', 'normal', 'high', 'full']
+      - name: station_name
+        tests:
+          - not_null
+      - name: latitude
+        tests:
+          - not_null
+      - name: longitude
+        tests:
+          - not_null
+
+  - name: int_availability_weather
+    description: "Disponibilite des stations correlee aux conditions meteo"
+    columns:
+      - name: station_id
+        description: "Identifiant unique de la station"
+        tests:
+          - not_null
+      - name: hour_key
+        description: "Cle horaire pour jointure avec meteo"
+        tests:
+          - not_null
+      - name: weather_category
+        description: "Categorie meteo derivee du code WMO"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['clear', 'cloudy', 'rain', 'snow', 'storm', 'other']
+      - name: cycling_conditions
+        description: "Conditions de cyclisme calculees"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['ideal', 'good', 'moderate', 'bad']
+      - name: fill_rate_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100

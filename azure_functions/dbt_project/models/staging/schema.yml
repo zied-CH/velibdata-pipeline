@@ -8,6 +8,9 @@ models:
         description: "Identifiant unique de la station"
         tests:
           - not_null
+          - relationships:
+              to: ref('stg_station_info')
+              field: station_id
       - name: station_code
         description: "Code court de la station"
         tests:
@@ -16,8 +19,40 @@ models:
         description: "Nombre total de velos disponibles"
         tests:
           - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
       - name: docks_available
         description: "Nombre de bornes libres"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: mechanical_bikes
+        description: "Nombre de velos mecaniques"
+        tests:
+          - not_null
+      - name: electric_bikes
+        description: "Nombre de velos electriques"
+        tests:
+          - not_null
+      - name: is_installed
+        description: "Station installee"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false, 0, 1]
+      - name: is_renting
+        description: "Location active"
+        tests:
+          - not_null
+      - name: is_returning
+        description: "Retour actif"
+        tests:
+          - not_null
+      - name: last_reported_at
+        description: "Derniere mise a jour de la station"
         tests:
           - not_null
 
@@ -29,18 +64,36 @@ models:
         tests:
           - not_null
           - unique
+      - name: station_code
+        description: "Code court de la station"
+        tests:
+          - not_null
+          - unique
       - name: station_name
         description: "Nom de la station"
         tests:
           - not_null
       - name: latitude
-        description: "Coordonnee GPS latitude"
+        description: "Coordonnee GPS latitude — Paris : 48.7 a 49.0"
         tests:
           - not_null
+          - dbt_utils.accepted_range:
+              min_value: 48.7
+              max_value: 49.0
       - name: longitude
-        description: "Coordonnee GPS longitude"
+        description: "Coordonnee GPS longitude — Paris : 2.2 a 2.5"
         tests:
           - not_null
+          - dbt_utils.accepted_range:
+              min_value: 2.2
+              max_value: 2.5
+      - name: total_capacity
+        description: "Capacite totale de la station"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 100
 
   - name: stg_weather
     description: "Donnees meteo nettoyees"
@@ -49,7 +102,27 @@ models:
         description: "Horodatage de la mesure"
         tests:
           - not_null
+          - unique
       - name: temperature_celsius
-        description: "Temperature en degres Celsius"
+        description: "Temperature en degres Celsius — plage Paris : -20 a 50"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: -20
+              max_value: 50
+      - name: precipitation_mm
+        description: "Precipitations en millimetres"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 500
+      - name: wind_speed_kmh
+        description: "Vitesse du vent en km/h"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 300
+      - name: weather_code
+        description: "Code WMO de la meteo"
         tests:
           - not_null

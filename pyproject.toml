@@ -29,6 +29,11 @@ dependencies = [
     "structlog>=24.1.0",
     "rich>=13.7.0",
     "dbt-sqlserver>=1.9.1",
+    # === Dashboard & Visualisation ===
+    "streamlit>=1.35.0",
+    "plotly>=5.20.0",
+    "folium>=0.16.0",
+    "streamlit-folium>=0.20.0",
 ]
 
 [project.optional-dependencies]

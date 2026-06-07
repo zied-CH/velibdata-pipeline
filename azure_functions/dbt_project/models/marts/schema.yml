@@ -1,0 +1,97 @@
+version: 2
+
+models:
+  - name: mart_station_kpis
+    description: "KPIs par station pour Power BI"
+    columns:
+      - name: station_id
+        description: "Identifiant unique de la station"
+        tests:
+          - not_null
+          - unique
+      - name: station_name
+        tests:
+          - not_null
+      - name: latitude
+        tests:
+          - not_null
+      - name: longitude
+        tests:
+          - not_null
+      - name: fill_rate_pct
+        description: "Taux de remplissage (0-100)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: electric_ratio_pct
+        description: "Part de velos electriques (0-100)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: availability_status
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['empty', 'low', 'normal', 'high', 'full']
+      - name: is_active
+        description: "Station pleinement operationnelle"
+        tests:
+          - not_null
+
+  - name: mart_city_overview
+    description: "Vue agregee de Paris pour tableau de bord"
+    columns:
+      - name: total_stations
+        description: "Nombre total de stations actives"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+      - name: total_bikes_available
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: avg_fill_rate_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+
+  - name: mart_weather_impact
+    description: "Impact des conditions meteo sur la disponibilite Velib"
+    columns:
+      - name: weather_category
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['clear', 'cloudy', 'rain', 'snow', 'storm', 'other']
+      - name: cycling_conditions
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['ideal', 'good', 'moderate', 'bad']
+      - name: nb_observations
+        description: "Nombre d'observations dans cette categorie"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+      - name: avg_fill_rate_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: pct_stations_empty
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: pct_stations_full
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
