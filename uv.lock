@@ -1302,35 +1302,6 @@ wheels = [
 ]
 
 [[package]]
-name = "great-expectations"
-version = "1.17.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "altair" },
-    { name = "cryptography" },
-    { name = "jinja2" },
-    { name = "jsonschema" },
-    { name = "marshmallow" },
-    { name = "mistune" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pandas" },
-    { name = "pydantic" },
-    { name = "pyparsing" },
-    { name = "python-dateutil" },
-    { name = "requests" },
-    { name = "ruamel-yaml" },
-    { name = "scipy" },
-    { name = "tqdm" },
-    { name = "typing-extensions" },
-    { name = "tzlocal" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e9/cd/cf70821b719aa9b17fbb242685d2cd001e57669460964974fea86da05478/great_expectations-1.17.2.tar.gz", hash = "sha256:327c3833bdbfbf79dce6898cb12318d6141d36059b7e5dbfa95c8cdf91266149", size = 36341203, upload-time = "2026-05-14T12:07:02.735Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ea/bd/a0ce6ed93065170caf8a6ddfb1ccfface39e7687ae81c54e604f472a9d50/great_expectations-1.17.2-py3-none-any.whl", hash = "sha256:387e0da0caa8d682ff9dd6108baea3d2d6b1e5c90d6b61085713d0671e2ab82a", size = 4952052, upload-time = "2026-05-14T12:06:59.521Z" },
-]
-
-[[package]]
 name = "greenlet"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1887,18 +1858,6 @@ wheels = [
 ]
 
 [[package]]
-name = "marshmallow"
-version = "3.26.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/55/79/de6c16cc902f4fc372236926b0ce2ab7845268dcc30fb2fbb7f71b418631/marshmallow-3.26.2.tar.gz", hash = "sha256:bbe2adb5a03e6e3571b573f42527c6fe926e17467833660bebd11593ab8dfd57", size = 222095, upload-time = "2025-12-22T06:53:53.309Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/be/2f/5108cb3ee4ba6501748c4908b908e55f42a5b66245b4cfe0c99326e1ef6e/marshmallow-3.26.2-py3-none-any.whl", hash = "sha256:013fa8a3c4c276c24d26d84ce934dc964e2aa794345a0f8c7e5a7191482c8a73", size = 50964, upload-time = "2025-12-22T06:53:51.801Z" },
-]
-
-[[package]]
 name = "mashumaro"
 version = "3.14"
 source = { registry = "https://pypi.org/simple" }
@@ -1986,15 +1945,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
-]
-
-[[package]]
-name = "mistune"
-version = "3.2.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ca/84/620cc3f7e3adf6f5067e10f4dbae71295d8f9e16d5d3f9ef97c40f2f592c/mistune-3.2.1.tar.gz", hash = "sha256:7c8e5501d38bac1582e067e46c8343f17d57ea1aaa735823f3aba1fd59c88a28", size = 98003, upload-time = "2026-05-03T14:33:22.312Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2a/7f/a946aa4f8752b37102b41e64dca18a1976ac705c3a0d1dfe74d820a02552/mistune-3.2.1-py3-none-any.whl", hash = "sha256:78cdb0ba5e938053ccf63651b352508d2efa9411dc8810bfb05f2dc5140c0048", size = 53749, upload-time = "2026-05-03T14:33:20.551Z" },
 ]
 
 [[package]]
@@ -3524,15 +3474,6 @@ wheels = [
 ]
 
 [[package]]
-name = "ruamel-yaml"
-version = "0.19.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c7/3b/ebda527b56beb90cb7652cb1c7e4f91f48649fbcd8d2eb2fb6e77cd3329b/ruamel_yaml-0.19.1.tar.gz", hash = "sha256:53eb66cd27849eff968ebf8f0bf61f46cdac2da1d1f3576dd4ccee9b25c31993", size = 142709, upload-time = "2026-01-02T16:50:31.84Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/0c/51f6841f1d84f404f92463fc2b1ba0da357ca1e3db6b7fbda26956c3b82a/ruamel_yaml-0.19.1-py3-none-any.whl", hash = "sha256:27592957fedf6e0b62f281e96effd28043345e0e66001f97683aa9a40c667c93", size = 118102, upload-time = "2026-01-02T16:50:29.201Z" },
-]
-
-[[package]]
 name = "ruff"
 version = "0.15.13"
 source = { registry = "https://pypi.org/simple" }
@@ -3964,18 +3905,6 @@ wheels = [
 ]
 
 [[package]]
-name = "tqdm"
-version = "4.67.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/09/a9/6ba95a270c6f1fbcd8dac228323f2777d886cb206987444e4bce66338dd4/tqdm-4.67.3.tar.gz", hash = "sha256:7d825f03f89244ef73f1d4ce193cb1774a8179fd96f31d7e1dcde62092b960bb", size = 169598, upload-time = "2026-02-03T17:35:53.048Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/e1/3079a9ff9b8e11b846c6ac5c8b5bfb7ff225eee721825310c91b3b50304f/tqdm-4.67.3-py3-none-any.whl", hash = "sha256:ee1e4c0e59148062281c49d80b25b67771a127c85fc9676d3be5f243206826bf", size = 78374, upload-time = "2026-02-03T17:35:50.982Z" },
-]
-
-[[package]]
 name = "typing-extensions"
 version = "4.15.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4003,18 +3932,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ba/19/1b9b0e29f30c6d35cb345486df41110984ea67ae69dddbc0e8a100999493/tzdata-2026.2.tar.gz", hash = "sha256:9173fde7d80d9018e02a662e168e5a2d04f87c41ea174b139fbef642eda62d10", size = 198254, upload-time = "2026-04-24T15:22:08.651Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ce/e4/dccd7f47c4b64213ac01ef921a1337ee6e30e8c6466046018326977efd95/tzdata-2026.2-py2.py3-none-any.whl", hash = "sha256:bbe9af844f658da81a5f95019480da3a89415801f6cc966806612cc7169bffe7", size = 349321, upload-time = "2026-04-24T15:22:05.876Z" },
-]
-
-[[package]]
-name = "tzlocal"
-version = "5.3.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "tzdata", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/8b/2e/c14812d3d4d9cd1773c6be938f89e5735a1f11a9f184ac3639b93cef35d5/tzlocal-5.3.1.tar.gz", hash = "sha256:cceffc7edecefea1f595541dbd6e990cb1ea3d19bf01b2809f362a03dd7921fd", size = 30761, upload-time = "2025-03-05T21:17:41.549Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/14/e2a54fabd4f08cd7af1c07030603c3356b74da07f7cc056e600436edfa17/tzlocal-5.3.1-py3-none-any.whl", hash = "sha256:eb1a66c3ef5847adf7a834f1be0800581b683b5608e74f86ecbcef8ab91bb85d", size = 18026, upload-time = "2025-03-05T21:17:39.857Z" },
 ]
 
 [[package]]
@@ -4049,7 +3966,6 @@ dependencies = [
     { name = "azure-storage-file-datalake" },
     { name = "dbt-sqlserver" },
     { name = "folium" },
-    { name = "great-expectations" },
     { name = "httpx" },
     { name = "pandas" },
     { name = "plotly" },
@@ -4057,6 +3973,7 @@ dependencies = [
     { name = "pyarrow" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "pyodbc" },
     { name = "python-dotenv" },
     { name = "requests" },
     { name = "rich" },
@@ -4090,7 +4007,6 @@ requires-dist = [
     { name = "azure-storage-file-datalake", specifier = ">=12.14.0" },
     { name = "dbt-sqlserver", specifier = ">=1.9.1" },
     { name = "folium", specifier = ">=0.16.0" },
-    { name = "great-expectations", specifier = ">=0.18.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "lightgbm", marker = "extra == 'ml'", specifier = ">=4.3.0" },
     { name = "matplotlib", marker = "extra == 'ml'", specifier = ">=3.8.0" },
@@ -4103,6 +4019,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "pydantic", specifier = ">=2.6.0" },
     { name = "pydantic-settings", specifier = ">=2.1.0" },
+    { name = "pyodbc", specifier = ">=5.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
