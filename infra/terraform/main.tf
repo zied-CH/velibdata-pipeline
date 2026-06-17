@@ -86,3 +86,40 @@ module "purview" {
 
   depends_on = [module.storage]
 }
+
+# ══════════════════════════════════════════════════════════════════
+# SÉCURITÉ — Logs d'audit centralisés dans Log Analytics
+# Toute lecture/écriture/suppression sur Key Vault et ADLS est tracée.
+# ══════════════════════════════════════════════════════════════════
+
+# Audit Key Vault : chaque accès à un secret (ADF, Functions, admin) est logué
+resource "azurerm_monitor_diagnostic_setting" "keyvault_audit" {
+  name                       = "kv-audit-logs"
+  target_resource_id         = module.foundation.key_vault_id
+  log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
+
+  enabled_log {
+    category = "AuditEvent"
+  }
+
+  depends_on = [module.foundation, module.monitoring]
+}
+
+# Audit ADLS Gen2 : lecture/écriture/suppression sur les blobs Bronze/Silver/Gold
+resource "azurerm_monitor_diagnostic_setting" "storage_audit" {
+  name                       = "storage-audit-logs"
+  target_resource_id         = "${module.storage.storage_account_id}/blobServices/default"
+  log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
+
+  enabled_log {
+    category = "StorageRead"
+  }
+  enabled_log {
+    category = "StorageWrite"
+  }
+  enabled_log {
+    category = "StorageDelete"
+  }
+
+  depends_on = [module.storage, module.monitoring]
+}

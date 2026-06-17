@@ -13,8 +13,8 @@ resource "azurerm_key_vault" "velibdata" {
   resource_group_name        = azurerm_resource_group.velibdata.name
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   sku_name                   = "standard"
-  soft_delete_retention_days = 7
-  purge_protection_enabled   = false
+  soft_delete_retention_days = 90   # sécurité: 90j au lieu de 7j
+  purge_protection_enabled   = true # sécurité: empêche suppression définitive accidentelle
 }
 
 # Current user (az login session) gets full admin access to Key Vault

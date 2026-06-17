@@ -6,13 +6,26 @@ resource "azurerm_storage_account" "velibdata" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
   account_kind             = "StorageV2"
-  is_hns_enabled           = true   # HNS = Hierarchical Namespace = ADLS Gen2
+  is_hns_enabled           = true # HNS = Hierarchical Namespace = ADLS Gen2
+
+  # ── Sécurité transport ────────────────────────────────────────
+  enable_https_traffic_only        = true    # refuse les requêtes HTTP
+  min_tls_version                  = "TLS1_2" # interdit TLS 1.0 et 1.1
+  allow_nested_items_to_be_public  = false   # bloque tout accès blob public anonyme
 
   blob_properties {
     delete_retention_policy {
       days = 7
     }
   }
+}
+
+# ── Règles réseau : refuse l'internet public, autorise les services Azure ──
+# ADF, Azure Functions et Databricks passent via "AzureServices" bypass.
+resource "azurerm_storage_account_network_rules" "velibdata" {
+  storage_account_id = azurerm_storage_account.velibdata.id
+  default_action     = "Deny"
+  bypass             = ["AzureServices", "Logging", "Metrics"]
 }
 
 # ── Bronze container — raw JSON from APIs ─────────────────────
