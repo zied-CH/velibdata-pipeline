@@ -32,7 +32,7 @@ jobs:
           terraform_version: "1.7.5"
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -lockfile=readonly
 
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
@@ -68,7 +68,5 @@ jobs:
 
       - name: Terraform Apply
         if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Linda-release') && github.event_name == 'push'
-        run: |
-          terraform apply \
-            -var="alert_email=${{ secrets.ALERT_EMAIL }}" \
-            -auto-approve tfplan
+        run: terraform apply -auto-approve tfplan
+        # Les variables sont déjà capturées dans tfplan — ne pas passer -var ici
