@@ -531,54 +531,42 @@ skinparam entity {
   BackgroundColor #E3F2FD
   BorderColor #1565C0
   FontColor #0D47A1
-  FontSize 13
 }
 skinparam ArrowColor #1565C0
 
 entity "STATION" as S {
-  + station_id <<PK>>
+  * station_id <<PK>>
   --
-  station_code
   nom_station
-  latitude
-  longitude
+  latitude / longitude
   capacite_totale
 }
 
 entity "STATUT_STATION" as SS {
-  + station_id <<FK>>
-  + horodatage <<PK>>
+  * station_id <<FK>>
+  * horodatage <<PK>>
   --
   velos_disponibles
-  velos_mecaniques
-  velos_electriques
   bornes_libres
-  est_installee
-  en_service_location
-  en_service_retour
-  derniere_maj_unix
 }
 
 entity "METEO" as M {
-  + heure_mesure <<PK>>
+  * heure_mesure <<PK>>
   --
-  temperature_celsius
-  precipitations_mm
-  vitesse_vent_kmh
-  code_WMO
-  categorie_meteo
+  temperature
+  precipitations
   conditions_cyclisme
 }
 
-S ||--o{ SS : "possede\\n(1,1) -> (0,N)"
-SS }o--o{ M : "observee lors de\\n(0,N) -> (0,N)\\nvia heure arrondie"
+S ||--o{ SS : "possede (1,N)"
+SS }o--o{ M : "observee lors de (0,N)"
 @enduml
 """
         st.image(_plantuml_url(mcd), use_container_width=True)
-        st.markdown("""
-- **1 station** possède **plusieurs statuts** dans le temps (mesure toutes les ~15 min)
-- **1 statut** est corrélé à **0 ou 1 condition météo** (jointure sur l'heure arrondie)
-        """)
+        st.markdown(
+            "- **1 station** possède **plusieurs statuts** dans le temps (toutes les ~15 min)\n"
+            "- **1 statut** est corrélé à **0 ou 1 météo** (jointure sur l'heure arrondie)"
+        )
 
     # ── TAB 2 : ERD ───────────────────────────────────────────────
     with tab2:
@@ -796,35 +784,34 @@ int_availability_weather --> mart_weather_impact
 @startuml
 !theme plain
 skinparam backgroundColor #FAFAFA
-skinparam entity {
+skinparam class {
   BackgroundColor #E8EAF6
   BorderColor #3949AB
   FontColor #1A237E
+  FontSize 10
 }
 skinparam package { BorderColor #7986CB }
 
-package "BRONZE" #ddeeff {
-  entity "station_info" as bi {
-    * station_id : BIGINT <<PK>>
-    --
+package "bronze" #ddeeff {
+  class station_info <<TABLE>> {
+    + station_id : BIGINT PK
     stationCode : VARCHAR(10)
     name : NVARCHAR(200)
     capacity : INT
     lat : FLOAT
     lon : FLOAT
+    ingested_at : DATETIME2
   }
-  entity "station_status" as bs {
-    * ingested_at : DATETIME2 <<PK>>
-    station_id : BIGINT <<FK>>
-    --
+  class station_status <<TABLE>> {
+    + station_id : BIGINT
+    + ingested_at : DATETIME2 PK
     num_bikes_available : INT
     num_docks_available : INT
     is_installed : BIT
     last_reported : BIGINT
   }
-  entity "weather" as bw {
-    * time : DATETIME2 <<PK>>
-    --
+  class weather <<TABLE>> {
+    + time : DATETIME2 PK
     temperature_2m : FLOAT
     precipitation : FLOAT
     windspeed_10m : FLOAT
@@ -832,70 +819,70 @@ package "BRONZE" #ddeeff {
   }
 }
 
-package "SILVER (VIEWs)" #eeddff {
-  entity "stg_station_status" as sss {
+package "silver" #eeddff {
+  class stg_station_status <<VIEW>> {
     station_id : BIGINT
     bikes_available : INT
     mechanical_bikes : INT
     electric_bikes : INT
     last_reported_at : DATETIME2
   }
-  entity "stg_station_info" as ssi {
+  class stg_station_info <<VIEW>> {
     station_id : BIGINT
     station_name : VARCHAR(200)
     total_capacity : INT
     latitude : FLOAT
     longitude : FLOAT
   }
-  entity "stg_weather" as sw {
+  class stg_weather <<VIEW>> {
     measured_at : DATETIME2
     temperature_celsius : FLOAT
     precipitation_mm : FLOAT
     wind_speed_kmh : FLOAT
   }
-  entity "int_station_availability" as isa {
+  class int_station_availability <<VIEW>> {
     station_id : BIGINT
     fill_rate_pct : FLOAT
     availability_status : VARCHAR(10)
   }
-  entity "int_availability_weather" as iaw {
+  class int_availability_weather <<VIEW>> {
     station_id : BIGINT
     fill_rate_pct : FLOAT
     cycling_conditions : VARCHAR(10)
   }
 }
 
-package "GOLD (TABLEs)" #ffffcc {
-  entity "mart_station_kpis" as mk {
+package "gold" #ffffcc {
+  class mart_station_kpis <<TABLE>> {
     station_id : BIGINT
     fill_rate_pct : FLOAT
     electric_ratio_pct : FLOAT
     availability_status : VARCHAR(10)
     is_active : BIT
   }
-  entity "mart_city_overview" as mc {
+  class mart_city_overview <<TABLE>> {
     total_stations : INT
     total_bikes_available : INT
     avg_fill_rate_pct : FLOAT
     snapshot_at : DATETIME2
   }
-  entity "mart_weather_impact" as mw {
+  class mart_weather_impact <<TABLE>> {
     weather_category : VARCHAR(10)
     avg_fill_rate_pct : FLOAT
     nb_observations : INT
   }
 }
 
-bs }o--|| sss : staging
-bi }o--|| ssi : staging
-bw }o--|| sw  : staging
-sss ||--o{ isa : intermediate
-ssi ||--o{ isa : intermediate
-isa ||--o{ iaw : intermediate
-sw  ||--o{ iaw : intermediate
-isa ||--o{ mk  : mart
-isa ||--o{ mc  : mart
-iaw ||--o{ mw  : mart
+station_status     --> stg_station_status      : staging
+station_info       --> stg_station_info        : staging
+weather            --> stg_weather             : staging
+stg_station_status --> int_station_availability : int
+stg_station_info   --> int_station_availability : int
+int_station_availability --> int_availability_weather : int
+stg_weather        --> int_availability_weather : int
+int_station_availability --> mart_station_kpis  : mart
+int_station_availability --> mart_city_overview : mart
+int_availability_weather --> mart_weather_impact : mart
 @enduml
 """
         st.image(_plantuml_url(mpd), use_container_width=True)
