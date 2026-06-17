@@ -790,28 +790,29 @@ skinparam class {
   FontColor #1A237E
   FontSize 10
 }
-skinparam package { BorderColor #7986CB }
+skinparam package {
+  BorderColor #7986CB
+}
 
 package "bronze" #ddeeff {
   class station_info <<TABLE>> {
-    + station_id : BIGINT PK
+    station_id : BIGINT PK
     stationCode : VARCHAR(10)
     name : NVARCHAR(200)
     capacity : INT
     lat : FLOAT
     lon : FLOAT
-    ingested_at : DATETIME2
   }
   class station_status <<TABLE>> {
-    + station_id : BIGINT
-    + ingested_at : DATETIME2 PK
+    station_id : BIGINT
+    ingested_at : DATETIME2 PK
     num_bikes_available : INT
     num_docks_available : INT
     is_installed : BIT
     last_reported : BIGINT
   }
   class weather <<TABLE>> {
-    + time : DATETIME2 PK
+    time : DATETIME2 PK
     temperature_2m : FLOAT
     precipitation : FLOAT
     windspeed_10m : FLOAT
@@ -825,7 +826,6 @@ package "silver" #eeddff {
     bikes_available : INT
     mechanical_bikes : INT
     electric_bikes : INT
-    last_reported_at : DATETIME2
   }
   class stg_station_info <<VIEW>> {
     station_id : BIGINT
@@ -857,14 +857,12 @@ package "gold" #ffffcc {
     station_id : BIGINT
     fill_rate_pct : FLOAT
     electric_ratio_pct : FLOAT
-    availability_status : VARCHAR(10)
     is_active : BIT
   }
   class mart_city_overview <<TABLE>> {
     total_stations : INT
     total_bikes_available : INT
     avg_fill_rate_pct : FLOAT
-    snapshot_at : DATETIME2
   }
   class mart_weather_impact <<TABLE>> {
     weather_category : VARCHAR(10)
@@ -873,14 +871,14 @@ package "gold" #ffffcc {
   }
 }
 
-station_status     --> stg_station_status      : staging
-station_info       --> stg_station_info        : staging
-weather            --> stg_weather             : staging
+station_status --> stg_station_status : staging
+station_info --> stg_station_info : staging
+weather --> stg_weather : staging
 stg_station_status --> int_station_availability : int
-stg_station_info   --> int_station_availability : int
+stg_station_info --> int_station_availability : int
 int_station_availability --> int_availability_weather : int
-stg_weather        --> int_availability_weather : int
-int_station_availability --> mart_station_kpis  : mart
+stg_weather --> int_availability_weather : int
+int_station_availability --> mart_station_kpis : mart
 int_station_availability --> mart_city_overview : mart
 int_availability_weather --> mart_weather_impact : mart
 @enduml
