@@ -796,129 +796,106 @@ int_availability_weather --> mart_weather_impact
 @startuml
 !theme plain
 skinparam backgroundColor #FAFAFA
-skinparam class {
+skinparam entity {
   BackgroundColor #E8EAF6
   BorderColor #3949AB
   FontColor #1A237E
-  FontSize 10
 }
-skinparam package { BorderColor #3949AB }
+skinparam package { BorderColor #7986CB }
 
-package "Schema BRONZE" #E3F2FD {
-  class "bronze.station_info" << TABLE >> {
-    station_id     : BIGINT NOT NULL PK
-    stationCode    : VARCHAR(10) NOT NULL
-    name           : NVARCHAR(200) NOT NULL
-    capacity       : INT NOT NULL
-    lat            : FLOAT NOT NULL
-    lon            : FLOAT NOT NULL
-    ingested_at    : DATETIME2 DEFAULT GETUTCDATE()
+package "BRONZE" #ddeeff {
+  entity "station_info" as bi {
+    * station_id : BIGINT <<PK>>
+    --
+    stationCode : VARCHAR(10)
+    name : NVARCHAR(200)
+    capacity : INT
+    lat : FLOAT
+    lon : FLOAT
   }
-  class "bronze.station_status" << TABLE >> {
-    station_id                : BIGINT NOT NULL
-    stationCode               : VARCHAR(10) NOT NULL
-    num_bikes_available       : INT NOT NULL
-    num_docks_available       : INT NOT NULL
-    num_bikes_available_types : NVARCHAR(MAX)
-    is_installed              : BIT NOT NULL
-    is_renting                : BIT NOT NULL
-    is_returning              : BIT NOT NULL
-    last_reported             : BIGINT NOT NULL
-    ingested_at               : DATETIME2 PK
-    .. INDEX ..
-    IX_station_status_station_id
+  entity "station_status" as bs {
+    * ingested_at : DATETIME2 <<PK>>
+    station_id : BIGINT <<FK>>
+    --
+    num_bikes_available : INT
+    num_docks_available : INT
+    is_installed : BIT
+    last_reported : BIGINT
   }
-  class "bronze.weather" << TABLE >> {
-    time           : DATETIME2 NOT NULL PK
-    temperature_2m : FLOAT NOT NULL
-    precipitation  : FLOAT
-    windspeed_10m  : FLOAT
-    weathercode    : INT
-    ingested_at    : DATETIME2
-    .. INDEX ..
-    IX_weather_time DESC
+  entity "weather" as bw {
+    * time : DATETIME2 <<PK>>
+    --
+    temperature_2m : FLOAT
+    precipitation : FLOAT
+    windspeed_10m : FLOAT
+    weathercode : INT
   }
 }
 
-package "Schema SILVER" #F3E5F5 {
-  class "silver.stg_station_status" << VIEW >> {
-    station_id       : BIGINT
-    station_code     : VARCHAR(10)
-    bikes_available  : INT
-    docks_available  : INT
+package "SILVER (VIEWs)" #eeddff {
+  entity "stg_station_status" as sss {
+    station_id : BIGINT
+    bikes_available : INT
     mechanical_bikes : INT
-    electric_bikes   : INT
-    is_installed     : BIT
-    is_renting       : BIT
-    is_returning     : BIT
+    electric_bikes : INT
     last_reported_at : DATETIME2
-    ingested_at      : DATETIME2
   }
-  class "silver.stg_station_info" << VIEW >> {
-    station_id    : BIGINT
-    station_code  : VARCHAR(10)
-    station_name  : VARCHAR(200)
-    total_capacity: INT
-    latitude      : FLOAT
-    longitude     : FLOAT
-    ingested_at   : DATETIME2
+  entity "stg_station_info" as ssi {
+    station_id : BIGINT
+    station_name : VARCHAR(200)
+    total_capacity : INT
+    latitude : FLOAT
+    longitude : FLOAT
   }
-  class "silver.stg_weather" << VIEW >> {
-    measured_at         : DATETIME2
+  entity "stg_weather" as sw {
+    measured_at : DATETIME2
     temperature_celsius : FLOAT
-    precipitation_mm    : FLOAT
-    wind_speed_kmh      : FLOAT
-    weather_code        : INT
-    ingested_at         : DATETIME2
+    precipitation_mm : FLOAT
+    wind_speed_kmh : FLOAT
   }
-}
-
-package "Schema GOLD" #FFFDE7 {
-  class "gold.mart_station_kpis" << TABLE >> {
-    station_id         : BIGINT
-    station_code       : VARCHAR(10)
-    station_name       : VARCHAR(200)
-    latitude           : FLOAT
-    longitude          : FLOAT
-    total_capacity     : INT
-    bikes_available    : INT
-    fill_rate_pct      : FLOAT
-    electric_ratio_pct : FLOAT
-    availability_status: VARCHAR(10)
-    is_active          : BIT
-    last_reported_at   : DATETIME2
-    ingested_at        : DATETIME2
+  entity "int_station_availability" as isa {
+    station_id : BIGINT
+    fill_rate_pct : FLOAT
+    availability_status : VARCHAR(10)
   }
-  class "gold.mart_city_overview" << TABLE >> {
-    total_stations        : INT
-    total_bikes_available : INT
-    total_mechanical      : INT
-    total_electric        : INT
-    avg_fill_rate_pct     : FLOAT
-    stations_empty        : INT
-    stations_full         : INT
-    stations_low          : INT
-    snapshot_at           : DATETIME2
-  }
-  class "gold.mart_weather_impact" << TABLE >> {
-    weather_category   : VARCHAR(10)
+  entity "int_availability_weather" as iaw {
+    station_id : BIGINT
+    fill_rate_pct : FLOAT
     cycling_conditions : VARCHAR(10)
-    temperature_celsius: FLOAT
-    precipitation_mm   : FLOAT
-    avg_fill_rate_pct  : FLOAT
-    pct_stations_empty : FLOAT
-    nb_observations    : INT
-    snapshot_hour      : DATETIME2
   }
 }
 
-"bronze.station_status" --> "silver.stg_station_status" : dbt staging
-"bronze.station_info"   --> "silver.stg_station_info"   : dbt staging
-"bronze.weather"        --> "silver.stg_weather"         : dbt staging
-"silver.stg_station_status" --> "gold.mart_station_kpis"  : dbt mart
-"silver.stg_station_info"   --> "gold.mart_station_kpis"  : dbt mart
-"silver.stg_station_status" --> "gold.mart_city_overview" : dbt mart
-"silver.stg_weather"        --> "gold.mart_weather_impact": dbt mart
+package "GOLD (TABLEs)" #ffffcc {
+  entity "mart_station_kpis" as mk {
+    station_id : BIGINT
+    fill_rate_pct : FLOAT
+    electric_ratio_pct : FLOAT
+    availability_status : VARCHAR(10)
+    is_active : BIT
+  }
+  entity "mart_city_overview" as mc {
+    total_stations : INT
+    total_bikes_available : INT
+    avg_fill_rate_pct : FLOAT
+    snapshot_at : DATETIME2
+  }
+  entity "mart_weather_impact" as mw {
+    weather_category : VARCHAR(10)
+    avg_fill_rate_pct : FLOAT
+    nb_observations : INT
+  }
+}
+
+bs }o--|| sss : staging
+bi }o--|| ssi : staging
+bw }o--|| sw  : staging
+sss ||--o{ isa : intermediate
+ssi ||--o{ isa : intermediate
+isa ||--o{ iaw : intermediate
+sw  ||--o{ iaw : intermediate
+isa ||--o{ mk  : mart
+isa ||--o{ mc  : mart
+iaw ||--o{ mw  : mart
 @enduml
 """
         st.image(_plantuml_url(mpd), use_container_width=True)
@@ -926,62 +903,52 @@ package "Schema GOLD" #FFFDE7 {
     # ── TAB 5 : Lignée dbt ────────────────────────────────────────
     with tab5:
         st.subheader("Lignée des données — Data Lineage")
-        st.markdown("Chaque `{{ ref() }}` dans les modèles dbt crée une " "**dépendance traçable** entre les couches.")
+        st.markdown("Chaque `{{ ref() }}` dans les modèles dbt crée une **dépendance traçable** entre les couches.")
         lineage = """
 @startuml
 !theme plain
+left to right direction
 skinparam backgroundColor #FAFAFA
-skinparam component {
+skinparam ArrowColor #555555
+skinparam node {
   FontSize 11
   BorderThickness 1.5
 }
-skinparam arrow { Color #555555 }
 
-together {
-  component "API Velib\\nstation_status" as api_s #lightblue
-  component "API Velib\\nstation_info" as api_i #lightblue
-  component "API Open-Meteo\\nmeteo Paris" as api_w #lightblue
-}
+node "API Velib\\nstation_status" as api_s #ADD8E6
+node "API Velib\\nstation_info"   as api_i #ADD8E6
+node "API Open-Meteo\\nmeteo"     as api_w #ADD8E6
 
-together {
-  database "bronze\\nstation_status" as b_s #cd7f32
-  database "bronze\\nstation_info" as b_i #cd7f32
-  database "bronze\\nweather" as b_w #cd7f32
-}
+database "bronze\\nstation_status" as b_s #DEB887
+database "bronze\\nstation_info"   as b_i #DEB887
+database "bronze\\nweather"        as b_w #DEB887
 
-together {
-  component "silver\\nstg_station_status" as s_ss #silver
-  component "silver\\nstg_station_info" as s_si #silver
-  component "silver\\nstg_weather" as s_sw #silver
-}
+rectangle "silver\\nstg_status"   as s_ss #DCDCDC
+rectangle "silver\\nstg_info"     as s_si #DCDCDC
+rectangle "silver\\nstg_weather"  as s_sw #DCDCDC
+rectangle "silver\\nint_avail"    as s_av #DCDCDC
+rectangle "silver\\nint_weather"  as s_aw #DCDCDC
 
-together {
-  component "silver\\nint_station\\navailability" as s_av #silver
-  component "silver\\nint_avail\\nweather" as s_aw #silver
-}
+database "gold\\nmart_kpis"     as g_k #FFD700
+database "gold\\nmart_city"     as g_c #FFD700
+database "gold\\nmart_weather"  as g_w #FFD700
 
-together {
-  database "gold\\nmart_station\\nkpis" as g_k #FFD700
-  database "gold\\nmart_city\\noverview" as g_c #FFD700
-  database "gold\\nmart_weather\\nimpact" as g_w #FFD700
-}
+api_s --> b_s : ingest
+api_i --> b_i : ingest
+api_w --> b_w : ingest
 
-api_s --> b_s : ingestion async
-api_i --> b_i : ingestion async
-api_w --> b_w : ingestion async
+b_s --> s_ss : staging
+b_i --> s_si : staging
+b_w --> s_sw : staging
 
-b_s --> s_ss : dbt staging
-b_i --> s_si : dbt staging
-b_w --> s_sw : dbt staging
+s_ss --> s_av : int
+s_si --> s_av : int
+s_av --> s_aw : int
+s_sw --> s_aw : int
 
-s_ss --> s_av : dbt intermediate
-s_si --> s_av : dbt intermediate
-s_av --> s_aw : dbt intermediate
-s_sw --> s_aw : dbt intermediate
-
-s_av --> g_k : dbt mart
-s_av --> g_c : dbt mart
-s_aw --> g_w : dbt mart
+s_av --> g_k : mart
+s_av --> g_c : mart
+s_aw --> g_w : mart
 @enduml
 """
         st.image(_plantuml_url(lineage), use_container_width=True)
