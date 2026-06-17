@@ -96,6 +96,44 @@ def load_demo_stations() -> pd.DataFrame:
     return pd.DataFrame(stations)
 
 
+# ── PlantUML helper ──────────────────────────────────────────────
+
+
+def _plantuml_url(text: str) -> str:
+    """Encode PlantUML text and return the public server PNG URL."""
+    import zlib
+
+    data = zlib.compress(text.encode("utf-8"))[2:-4]
+
+    def _enc6(b: int) -> str:
+        if b < 10:
+            return chr(48 + b)
+        b -= 10
+        if b < 26:
+            return chr(65 + b)
+        b -= 26
+        if b < 26:
+            return chr(97 + b)
+        b -= 26
+        return "-" if b == 0 else "_"
+
+    def _enc3(b1: int, b2: int, b3: int) -> str:
+        return (
+            _enc6((b1 >> 2) & 0x3F)
+            + _enc6(((b1 & 3) << 4 | b2 >> 4) & 0x3F)
+            + _enc6(((b2 & 0xF) << 2 | b3 >> 6) & 0x3F)
+            + _enc6(b3 & 0x3F)
+        )
+
+    result = ""
+    for i in range(0, len(data), 3):
+        chunk = data[i : i + 3]
+        padded = chunk + b"\x00" * (3 - len(chunk))
+        result += _enc3(padded[0], padded[1], padded[2])
+
+    return f"https://www.plantuml.com/plantuml/png/{result}"
+
+
 # ── Sidebar ───────────────────────────────────────────────────────
 
 with st.sidebar:
@@ -477,7 +515,7 @@ elif page == "Alertes & Coûts":
 
 elif page == "Modèles de données":
     st.title("🗂️ Modèles de données — Gouvernance")
-    st.caption("MCD · ERD · MLD · MPD · Lignée dbt")
+    st.caption("MCD · ERD · MLD · MPD · Lignée dbt — rendus avec PlantUML")
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["MCD", "ERD", "MLD", "MPD", "Lignée dbt"])
 
@@ -485,499 +523,472 @@ elif page == "Modèles de données":
     with tab1:
         st.subheader("Modèle Conceptuel des Données")
         st.markdown("Représentation des **concepts métier** sans considération technique.")
+        mcd = """
+@startuml
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam entity {
+  BackgroundColor #E3F2FD
+  BorderColor #1565C0
+  FontColor #0D47A1
+  FontSize 13
+}
+skinparam ArrowColor #1565C0
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown("### 🏪 STATION")
-            st.markdown("""
-- Identifiant station
-- Code station
-- Nom de la station
-- Latitude / Longitude
-- Capacité totale
-            """)
-        with col2:
-            st.markdown("### 📊 STATUT_STATION")
-            st.markdown("""
-- Vélos disponibles
-- Vélos mécaniques
-- Vélos électriques
-- Bornes libres
-- Est installée / En service
-- Dernière mise à jour
-            """)
-        with col3:
-            st.markdown("### 🌤️ MÉTÉO")
-            st.markdown("""
-- Heure de mesure
-- Température (°C)
-- Précipitations (mm)
-- Vitesse du vent (km/h)
-- Code météo WMO
-- Catégorie météo
-- Conditions cyclisme
-            """)
+entity "STATION" as S {
+  + station_id <<PK>>
+  --
+  station_code
+  nom_station
+  latitude
+  longitude
+  capacite_totale
+}
 
-        st.divider()
-        st.markdown("### Associations et cardinalités")
-        st.code("""
-STATION (1,1) ────────── possède ────────── (0,N) STATUT_STATION
-                          │
-STATUT_STATION (0,N) ── observée lors de ── (0,N) MÉTÉO
-                         (via heure arrondie)
-        """)
+entity "STATUT_STATION" as SS {
+  + station_id <<FK>>
+  + horodatage <<PK>>
+  --
+  velos_disponibles
+  velos_mecaniques
+  velos_electriques
+  bornes_libres
+  est_installee
+  en_service_location
+  en_service_retour
+  derniere_maj_unix
+}
+
+entity "METEO" as M {
+  + heure_mesure <<PK>>
+  --
+  temperature_celsius
+  precipitations_mm
+  vitesse_vent_kmh
+  code_WMO
+  categorie_meteo
+  conditions_cyclisme
+}
+
+S ||--o{ SS : "possede\\n(1,1) -> (0,N)"
+SS }o--o{ M : "observee lors de\\n(0,N) -> (0,N)\\nvia heure arrondie"
+@enduml
+"""
+        st.image(_plantuml_url(mcd), use_container_width=True)
         st.markdown("""
-- **1 station** possède **plusieurs statuts** dans le temps (mesure toutes les 15 min)
+- **1 station** possède **plusieurs statuts** dans le temps (mesure toutes les ~15 min)
 - **1 statut** est corrélé à **0 ou 1 condition météo** (jointure sur l'heure arrondie)
         """)
 
     # ── TAB 2 : ERD ───────────────────────────────────────────────
     with tab2:
         st.subheader("Entity-Relationship Diagram")
-        st.markdown("Diagramme des relations entre entités avec types de données.")
+        st.markdown("Diagramme entité-association avec attributs et types de données.")
+        erd = """
+@startuml
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam class {
+  BackgroundColor #E8F5E9
+  BorderColor #2E7D32
+  FontColor #1B5E20
+}
 
-        # Visualisation réseau avec plotly
-        nodes = {
-            "bronze\nstation_info": (0, 3),
-            "bronze\nstation_status": (0, 1),
-            "bronze\nweather": (0, -1),
-            "silver\nstg_station_info": (2, 3),
-            "silver\nstg_station_status": (2, 1),
-            "silver\nstg_weather": (2, -1),
-            "silver\nint_station_avail": (4, 2),
-            "silver\nint_avail_weather": (4, 0),
-            "gold\nmart_station_kpis": (6, 3),
-            "gold\nmart_city_overview": (6, 1),
-            "gold\nmart_weather_impact": (6, -1),
-        }
+entity STATION {
+  * station_id : BIGINT <<PK>>
+  --
+  station_code : VARCHAR(10)
+  station_name : NVARCHAR(200)
+  latitude : FLOAT
+  longitude : FLOAT
+  total_capacity : INT
+  ingested_at : DATETIME2
+}
 
-        edges = [
-            ("bronze\nstation_info", "silver\nstg_station_info"),
-            ("bronze\nstation_status", "silver\nstg_station_status"),
-            ("bronze\nweather", "silver\nstg_weather"),
-            ("silver\nstg_station_info", "silver\nint_station_avail"),
-            ("silver\nstg_station_status", "silver\nint_station_avail"),
-            ("silver\nstg_weather", "silver\nint_avail_weather"),
-            ("silver\nint_station_avail", "silver\nint_avail_weather"),
-            ("silver\nint_station_avail", "gold\nmart_station_kpis"),
-            ("silver\nint_station_avail", "gold\nmart_city_overview"),
-            ("silver\nint_avail_weather", "gold\nmart_weather_impact"),
-        ]
+entity STATION_STATUS {
+  * station_id : BIGINT <<FK>>
+  * last_reported_at : DATETIME2
+  --
+  bikes_available : INT
+  mechanical_bikes : INT
+  electric_bikes : INT
+  docks_available : INT
+  is_installed : BIT
+  is_renting : BIT
+  is_returning : BIT
+}
 
-        colors = {
-            "bronze": "#cd7f32",
-            "silver": "#c0c0c0",
-            "gold": "#ffd700",
-        }
+entity WEATHER {
+  * measured_at : DATETIME2 <<PK>>
+  --
+  temperature_celsius : FLOAT
+  precipitation_mm : FLOAT
+  wind_speed_kmh : FLOAT
+  weather_code : INT
+  weather_category : VARCHAR
+  cycling_conditions : VARCHAR
+}
 
-        edge_x, edge_y = [], []
-        for src, dst in edges:
-            x0, y0 = nodes[src]
-            x1, y1 = nodes[dst]
-            edge_x += [x0, x1, None]
-            edge_y += [y0, y1, None]
+entity MART_STATION_KPIS {
+  * station_id : BIGINT <<FK>>
+  --
+  fill_rate_pct : FLOAT
+  electric_ratio_pct : FLOAT
+  availability_status : VARCHAR
+  is_active : BIT
+  last_reported_at : DATETIME2
+}
 
-        node_x = [v[0] for v in nodes.values()]
-        node_y = [v[1] for v in nodes.values()]
-        node_labels = list(nodes.keys())
-        node_colors = [colors[k.split("\n")[0]] for k in nodes]
+entity MART_CITY_OVERVIEW {
+  * snapshot_at : DATETIME2 <<PK>>
+  --
+  total_stations : INT
+  total_bikes_available : INT
+  avg_fill_rate_pct : FLOAT
+  stations_empty : INT
+  stations_full : INT
+}
 
-        fig_erd = go.Figure()
-        fig_erd.add_trace(
-            go.Scatter(
-                x=edge_x,
-                y=edge_y,
-                mode="lines",
-                line=dict(width=2, color="#888"),
-                hoverinfo="none",
-            )
-        )
-        fig_erd.add_trace(
-            go.Scatter(
-                x=node_x,
-                y=node_y,
-                mode="markers+text",
-                text=node_labels,
-                textposition="middle center",
-                marker=dict(size=60, color=node_colors, line=dict(width=2, color="white")),
-                hoverinfo="text",
-            )
-        )
-        fig_erd.update_layout(
-            showlegend=False,
-            height=450,
-            margin=dict(t=10, b=10, l=10, r=10),
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            plot_bgcolor="rgba(0,0,0,0)",
-        )
-        st.plotly_chart(fig_erd, use_container_width=True)
-        st.caption("🟤 Bronze — ⚪ Silver — 🟡 Gold")
+entity MART_WEATHER_IMPACT {
+  * weather_category : VARCHAR
+  * cycling_conditions : VARCHAR
+  * snapshot_hour : DATETIME2
+  --
+  avg_fill_rate_pct : FLOAT
+  pct_stations_empty : FLOAT
+  nb_observations : INT
+}
 
-        st.divider()
-        st.markdown("**Diagramme Mermaid (code source) :**")
-        st.code(
-            """
-erDiagram
-    STATION ||--o{ STATION_STATUS : "possède"
-    STATION ||--o{ STATION_AVAILABILITY : "enrichit"
-    WEATHER ||--o{ AVAILABILITY_WEATHER : "corrélée à"
-    STATION_AVAILABILITY ||--o{ MART_STATION_KPIS : "alimente"
-    STATION_AVAILABILITY ||--|| MART_CITY_OVERVIEW : "agrège"
-    AVAILABILITY_WEATHER ||--o{ MART_WEATHER_IMPACT : "agrège"
-        """,
-            language="text",
-        )
+STATION ||--o{ STATION_STATUS : "possede"
+STATION ||--o{ MART_STATION_KPIS : "alimente"
+STATION_STATUS }o--|| MART_CITY_OVERVIEW : "agrege"
+WEATHER }o--o{ MART_WEATHER_IMPACT : "impacte"
+@enduml
+"""
+        st.image(_plantuml_url(erd), use_container_width=True)
 
     # ── TAB 3 : MLD ───────────────────────────────────────────────
     with tab3:
         st.subheader("Modèle Logique des Données")
-        st.markdown("Notation : `#` = clé primaire, `→` = clé étrangère")
+        st.markdown("Architecture médaillon complète — Bronze, Silver, Gold.")
+        mld = """
+@startuml
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam package {
+  BackgroundColor #FFFDE7
+  BorderColor #F57F17
+}
+skinparam class {
+  FontSize 11
+}
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("#### Couche Bronze — Données brutes")
-            st.code("""
-station_info(
-    #station_id,
-    stationCode,
-    name,
-    capacity,
-    lat, lon,
-    ingested_at
-)
+package "BRONZE — donnees brutes" #FFE0B2 {
+  class station_info << (T,#cd7f32) TABLE >> {
+    # station_id : BIGINT
+    stationCode : VARCHAR(10)
+    name : NVARCHAR(200)
+    capacity : INT
+    lat : FLOAT
+    lon : FLOAT
+    ingested_at : DATETIME2
+  }
+  class station_status << (T,#cd7f32) TABLE >> {
+    # station_id : BIGINT
+    # ingested_at : DATETIME2
+    num_bikes_available : INT
+    num_docks_available : INT
+    num_bikes_available_types : JSON
+    is_installed / is_renting : BIT
+    last_reported : BIGINT
+  }
+  class weather << (T,#cd7f32) TABLE >> {
+    # time : DATETIME2
+    temperature_2m : FLOAT
+    precipitation : FLOAT
+    windspeed_10m : FLOAT
+    weathercode : INT
+    ingested_at : DATETIME2
+  }
+}
 
-station_status(
-    #station_id,
-    #ingested_at,
-    stationCode,
-    num_bikes_available,
-    num_docks_available,
-    num_bikes_available_types [JSON],
-    is_installed, is_renting, is_returning,
-    last_reported
-)
+package "SILVER — donnees nettoyees" #E0E0E0 {
+  class stg_station_info << (V,#9E9E9E) VIEW >> {
+    # station_id : BIGINT
+    station_code : VARCHAR(10)
+    station_name : VARCHAR(200)
+    total_capacity : INT
+    latitude : FLOAT
+    longitude : FLOAT
+  }
+  class stg_station_status << (V,#9E9E9E) VIEW >> {
+    # station_id -> stg_station_info
+    bikes_available : INT
+    mechanical_bikes : INT
+    electric_bikes : INT
+    last_reported_at : DATETIME2
+  }
+  class stg_weather << (V,#9E9E9E) VIEW >> {
+    # measured_at : DATETIME2
+    temperature_celsius : FLOAT
+    precipitation_mm : FLOAT
+    wind_speed_kmh : FLOAT
+    weather_code : INT
+  }
+  class int_station_availability << (V,#9E9E9E) VIEW >> {
+    # station_id
+    station_name / lat / lon
+    fill_rate_pct : FLOAT [calcule]
+    availability_status : VARCHAR [calcule]
+    bikes_available : INT
+  }
+  class int_availability_weather << (V,#9E9E9E) VIEW >> {
+    # station_id
+    # hour_key -> stg_weather
+    weather_category : VARCHAR [calcule]
+    cycling_conditions : VARCHAR [calcule]
+    fill_rate_pct : FLOAT
+  }
+}
 
-weather(
-    #time,
-    temperature_2m,
-    precipitation,
-    windspeed_10m,
-    weathercode,
-    ingested_at
-)
-            """)
+package "GOLD — marts analytiques" #FFF9C4 {
+  class mart_station_kpis << (T,#FFC107) TABLE >> {
+    # station_id : BIGINT
+    station_name / lat / lon
+    fill_rate_pct : FLOAT
+    electric_ratio_pct : FLOAT [calcule]
+    is_active : BIT [calcule]
+  }
+  class mart_city_overview << (T,#FFC107) TABLE >> {
+    # snapshot_at : DATETIME2
+    total_stations : INT
+    total_bikes_available : INT
+    avg_fill_rate_pct : FLOAT
+    stations_empty / full / low : INT
+  }
+  class mart_weather_impact << (T,#FFC107) TABLE >> {
+    # weather_category
+    # cycling_conditions
+    avg_fill_rate_pct : FLOAT
+    pct_stations_empty : FLOAT
+    nb_observations : INT
+  }
+}
 
-            st.markdown("#### Couche Silver — Données nettoyées")
-            st.code("""
-stg_station_info(
-    #station_id,
-    station_code, station_name,
-    total_capacity,
-    latitude, longitude,
-    ingested_at
-)
-
-stg_station_status(
-    #station_id → stg_station_info,
-    #last_reported_at,
-    bikes_available, docks_available,
-    mechanical_bikes, electric_bikes,
-    is_installed, is_renting, is_returning,
-    ingested_at
-)
-
-stg_weather(
-    #measured_at,
-    temperature_celsius,
-    precipitation_mm,
-    wind_speed_kmh,
-    weather_code,
-    ingested_at
-)
-            """)
-
-        with col2:
-            st.markdown("#### Couche Silver — Intermédiaires")
-            st.code("""
-int_station_availability(
-    #station_id → stg_station_info,
-    station_name, latitude, longitude,
-    total_capacity,
-    bikes_available, mechanical_bikes,
-    electric_bikes, docks_available,
-    fill_rate_pct,       [calculé]
-    availability_status, [calculé]
-    ingested_at
-)
-
-int_availability_weather(
-    #station_id → int_station_availability,
-    #hour_key → stg_weather,
-    fill_rate_pct, availability_status,
-    temperature_celsius, precipitation_mm,
-    wind_speed_kmh,
-    weather_category,    [calculé]
-    cycling_conditions,  [calculé]
-    ingested_at
-)
-            """)
-
-            st.markdown("#### Couche Gold — Marts analytiques")
-            st.code("""
-mart_station_kpis(
-    #station_id,
-    station_name, latitude, longitude,
-    bikes_available, electric_bikes,
-    fill_rate_pct,
-    electric_ratio_pct, [calculé]
-    is_active,          [calculé]
-    last_reported_at
-)
-
-mart_city_overview(
-    #snapshot_at,
-    total_stations, total_bikes_available,
-    total_mechanical, total_electric,
-    avg_fill_rate_pct,
-    stations_empty, stations_full, stations_low
-)
-
-mart_weather_impact(
-    #weather_category,
-    #cycling_conditions,
-    #snapshot_hour,
-    avg_fill_rate_pct,
-    pct_stations_empty,
-    pct_stations_full,
-    nb_observations
-)
-            """)
+station_info --> stg_station_info
+station_status --> stg_station_status
+weather --> stg_weather
+stg_station_info --> int_station_availability
+stg_station_status --> int_station_availability
+stg_weather --> int_availability_weather
+int_station_availability --> int_availability_weather
+int_station_availability --> mart_station_kpis
+int_station_availability --> mart_city_overview
+int_availability_weather --> mart_weather_impact
+@enduml
+"""
+        st.image(_plantuml_url(mld), use_container_width=True)
 
     # ── TAB 4 : MPD ───────────────────────────────────────────────
     with tab4:
-        st.subheader("Modèle Physique des Données — T-SQL Azure SQL Server")
+        st.subheader("Modèle Physique des Données — Azure SQL Server T-SQL")
+        mpd = """
+@startuml
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam class {
+  BackgroundColor #E8EAF6
+  BorderColor #3949AB
+  FontColor #1A237E
+  FontSize 10
+}
+skinparam package { BorderColor #3949AB }
 
-        schema = st.selectbox("Schéma", ["Bronze", "Silver (views)", "Gold (tables)"])
+package "Schema BRONZE" #E3F2FD {
+  class "bronze.station_info" << TABLE >> {
+    station_id     : BIGINT NOT NULL PK
+    stationCode    : VARCHAR(10) NOT NULL
+    name           : NVARCHAR(200) NOT NULL
+    capacity       : INT NOT NULL
+    lat            : FLOAT NOT NULL
+    lon            : FLOAT NOT NULL
+    ingested_at    : DATETIME2 DEFAULT GETUTCDATE()
+  }
+  class "bronze.station_status" << TABLE >> {
+    station_id                : BIGINT NOT NULL
+    stationCode               : VARCHAR(10) NOT NULL
+    num_bikes_available       : INT NOT NULL
+    num_docks_available       : INT NOT NULL
+    num_bikes_available_types : NVARCHAR(MAX)
+    is_installed              : BIT NOT NULL
+    is_renting                : BIT NOT NULL
+    is_returning              : BIT NOT NULL
+    last_reported             : BIGINT NOT NULL
+    ingested_at               : DATETIME2 PK
+    .. INDEX ..
+    IX_station_status_station_id
+  }
+  class "bronze.weather" << TABLE >> {
+    time           : DATETIME2 NOT NULL PK
+    temperature_2m : FLOAT NOT NULL
+    precipitation  : FLOAT
+    windspeed_10m  : FLOAT
+    weathercode    : INT
+    ingested_at    : DATETIME2
+    .. INDEX ..
+    IX_weather_time DESC
+  }
+}
 
-        if schema == "Bronze":
-            st.code(
-                """
-CREATE TABLE bronze.station_info (
-    station_id   BIGINT        NOT NULL,
-    stationCode  VARCHAR(10)   NOT NULL,
-    name         NVARCHAR(200) NOT NULL,
-    capacity     INT           NOT NULL,
-    lat          FLOAT         NOT NULL,
-    lon          FLOAT         NOT NULL,
-    ingested_at  DATETIME2     NOT NULL DEFAULT GETUTCDATE(),
-    CONSTRAINT PK_bronze_station_info PRIMARY KEY (station_id)
-);
+package "Schema SILVER" #F3E5F5 {
+  class "silver.stg_station_status" << VIEW >> {
+    station_id       : BIGINT
+    station_code     : VARCHAR(10)
+    bikes_available  : INT
+    docks_available  : INT
+    mechanical_bikes : INT
+    electric_bikes   : INT
+    is_installed     : BIT
+    is_renting       : BIT
+    is_returning     : BIT
+    last_reported_at : DATETIME2
+    ingested_at      : DATETIME2
+  }
+  class "silver.stg_station_info" << VIEW >> {
+    station_id    : BIGINT
+    station_code  : VARCHAR(10)
+    station_name  : VARCHAR(200)
+    total_capacity: INT
+    latitude      : FLOAT
+    longitude     : FLOAT
+    ingested_at   : DATETIME2
+  }
+  class "silver.stg_weather" << VIEW >> {
+    measured_at         : DATETIME2
+    temperature_celsius : FLOAT
+    precipitation_mm    : FLOAT
+    wind_speed_kmh      : FLOAT
+    weather_code        : INT
+    ingested_at         : DATETIME2
+  }
+}
 
-CREATE TABLE bronze.station_status (
-    station_id                BIGINT        NOT NULL,
-    stationCode               VARCHAR(10)   NOT NULL,
-    num_bikes_available       INT           NOT NULL,
-    num_docks_available       INT           NOT NULL,
-    num_bikes_available_types NVARCHAR(MAX),
-    is_installed              BIT           NOT NULL,
-    is_renting                BIT           NOT NULL,
-    is_returning              BIT           NOT NULL,
-    last_reported             BIGINT        NOT NULL,
-    ingested_at               DATETIME2     NOT NULL DEFAULT GETUTCDATE(),
-    CONSTRAINT PK_bronze_station_status PRIMARY KEY (station_id, ingested_at)
-);
+package "Schema GOLD" #FFFDE7 {
+  class "gold.mart_station_kpis" << TABLE >> {
+    station_id         : BIGINT
+    station_code       : VARCHAR(10)
+    station_name       : VARCHAR(200)
+    latitude           : FLOAT
+    longitude          : FLOAT
+    total_capacity     : INT
+    bikes_available    : INT
+    fill_rate_pct      : FLOAT
+    electric_ratio_pct : FLOAT
+    availability_status: VARCHAR(10)
+    is_active          : BIT
+    last_reported_at   : DATETIME2
+    ingested_at        : DATETIME2
+  }
+  class "gold.mart_city_overview" << TABLE >> {
+    total_stations        : INT
+    total_bikes_available : INT
+    total_mechanical      : INT
+    total_electric        : INT
+    avg_fill_rate_pct     : FLOAT
+    stations_empty        : INT
+    stations_full         : INT
+    stations_low          : INT
+    snapshot_at           : DATETIME2
+  }
+  class "gold.mart_weather_impact" << TABLE >> {
+    weather_category   : VARCHAR(10)
+    cycling_conditions : VARCHAR(10)
+    temperature_celsius: FLOAT
+    precipitation_mm   : FLOAT
+    avg_fill_rate_pct  : FLOAT
+    pct_stations_empty : FLOAT
+    nb_observations    : INT
+    snapshot_hour      : DATETIME2
+  }
+}
 
-CREATE TABLE bronze.weather (
-    time           DATETIME2 NOT NULL,
-    temperature_2m FLOAT     NOT NULL,
-    precipitation  FLOAT,
-    windspeed_10m  FLOAT,
-    weathercode    INT,
-    ingested_at    DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    CONSTRAINT PK_bronze_weather PRIMARY KEY (time)
-);
-            """,
-                language="sql",
-            )
-
-        elif schema == "Silver (views)":
-            st.code(
-                """
-CREATE OR ALTER VIEW silver.stg_station_status AS
-    SELECT
-        CAST(station_id AS BIGINT)                              AS station_id,
-        CAST(stationCode AS VARCHAR(10))                        AS station_code,
-        CAST(num_bikes_available AS INT)                        AS bikes_available,
-        CAST(num_docks_available AS INT)                        AS docks_available,
-        CAST(JSON_VALUE(num_bikes_available_types,'$[0].mechanical') AS INT) AS mechanical_bikes,
-        CAST(JSON_VALUE(num_bikes_available_types,'$[1].ebike') AS INT)      AS electric_bikes,
-        CAST(is_installed AS BIT)                               AS is_installed,
-        CAST(is_renting   AS BIT)                               AS is_renting,
-        CAST(is_returning AS BIT)                               AS is_returning,
-        DATEADD(second, last_reported, '1970-01-01')            AS last_reported_at,
-        GETUTCDATE()                                            AS ingested_at
-    FROM bronze.station_status
-    WHERE station_id IS NOT NULL;
-
-CREATE OR ALTER VIEW silver.stg_station_info AS
-    SELECT
-        CAST(station_id AS BIGINT)      AS station_id,
-        CAST(stationCode AS VARCHAR(10)) AS station_code,
-        CAST(name AS VARCHAR(200))       AS station_name,
-        CAST(capacity AS INT)            AS total_capacity,
-        CAST(lat AS FLOAT)               AS latitude,
-        CAST(lon AS FLOAT)               AS longitude,
-        GETUTCDATE()                     AS ingested_at
-    FROM bronze.station_info
-    WHERE station_id IS NOT NULL
-      AND lat IS NOT NULL AND lon IS NOT NULL;
-
-CREATE OR ALTER VIEW silver.stg_weather AS
-    SELECT
-        CAST(time AS DATETIME2)          AS measured_at,
-        CAST(temperature_2m AS FLOAT)    AS temperature_celsius,
-        CAST(precipitation  AS FLOAT)    AS precipitation_mm,
-        CAST(windspeed_10m  AS FLOAT)    AS wind_speed_kmh,
-        CAST(weathercode    AS INT)      AS weather_code,
-        GETUTCDATE()                     AS ingested_at
-    FROM bronze.weather;
-            """,
-                language="sql",
-            )
-
-        else:
-            st.code(
-                """
--- mart_station_kpis : KPI par station
-SELECT
-    station_id, station_code, station_name,
-    latitude, longitude, total_capacity,
-    bikes_available, mechanical_bikes, electric_bikes,
-    docks_available, fill_rate_pct, availability_status,
-    CASE WHEN bikes_available > 0
-         THEN ROUND(CAST(electric_bikes AS FLOAT)/bikes_available*100, 1)
-         ELSE 0 END                                   AS electric_ratio_pct,
-    CASE WHEN is_installed=1 AND is_renting=1 AND is_returning=1
-         THEN 1 ELSE 0 END                            AS is_active,
-    GETUTCDATE()                                      AS ingested_at
-INTO gold.mart_station_kpis
-FROM silver.int_station_availability;
-
--- mart_city_overview : Vue globale Paris
-SELECT
-    COUNT(*)               AS total_stations,
-    SUM(bikes_available)   AS total_bikes_available,
-    SUM(mechanical_bikes)  AS total_mechanical,
-    SUM(electric_bikes)    AS total_electric,
-    SUM(docks_available)   AS total_docks_available,
-    SUM(total_capacity)    AS total_capacity,
-    ROUND(AVG(CAST(fill_rate_pct AS FLOAT)),1) AS avg_fill_rate_pct,
-    SUM(CASE WHEN availability_status='empty' THEN 1 ELSE 0 END) AS stations_empty,
-    SUM(CASE WHEN availability_status='full'  THEN 1 ELSE 0 END) AS stations_full,
-    GETUTCDATE()           AS snapshot_at
-INTO gold.mart_city_overview
-FROM silver.int_station_availability
-WHERE is_installed=1 AND is_renting=1;
-            """,
-                language="sql",
-            )
+"bronze.station_status" --> "silver.stg_station_status" : dbt staging
+"bronze.station_info"   --> "silver.stg_station_info"   : dbt staging
+"bronze.weather"        --> "silver.stg_weather"         : dbt staging
+"silver.stg_station_status" --> "gold.mart_station_kpis"  : dbt mart
+"silver.stg_station_info"   --> "gold.mart_station_kpis"  : dbt mart
+"silver.stg_station_status" --> "gold.mart_city_overview" : dbt mart
+"silver.stg_weather"        --> "gold.mart_weather_impact": dbt mart
+@enduml
+"""
+        st.image(_plantuml_url(mpd), use_container_width=True)
 
     # ── TAB 5 : Lignée dbt ────────────────────────────────────────
     with tab5:
-        st.subheader("Lignée des données — Graphe de dépendances dbt")
-        st.markdown(
-            "Chaque `{{ ref() }}` dans les modèles dbt crée une **dépendance traçable** "
-            "entre les couches Bronze → Silver → Gold."
-        )
+        st.subheader("Lignée des données — Data Lineage")
+        st.markdown("Chaque `{{ ref() }}` dans les modèles dbt crée une " "**dépendance traçable** entre les couches.")
+        lineage = """
+@startuml
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam component {
+  FontSize 11
+  BorderThickness 1.5
+}
+skinparam arrow { Color #555555 }
 
-        lineage_nodes = {
-            "API\nVélib Status": (-2, 1),
-            "API\nVélib Info": (-2, -1),
-            "API\nMétéo": (-2, -3),
-            "bronze\nstation_status": (0, 1),
-            "bronze\nstation_info": (0, -1),
-            "bronze\nweather": (0, -3),
-            "silver\nstg_station_status": (2, 1),
-            "silver\nstg_station_info": (2, -1),
-            "silver\nstg_weather": (2, -3),
-            "silver\nint_station\navailability": (4, 0),
-            "silver\nint_avail\nweather": (4, -2),
-            "gold\nmart_station\nkpis": (6, 1),
-            "gold\nmart_city\noverview": (6, -1),
-            "gold\nmart_weather\nimpact": (6, -3),
-        }
+together {
+  component "API Velib\\nstation_status" as api_s #lightblue
+  component "API Velib\\nstation_info" as api_i #lightblue
+  component "API Open-Meteo\\nmeteo Paris" as api_w #lightblue
+}
 
-        lineage_edges = [
-            ("API\nVélib Status", "bronze\nstation_status"),
-            ("API\nVélib Info", "bronze\nstation_info"),
-            ("API\nMétéo", "bronze\nweather"),
-            ("bronze\nstation_status", "silver\nstg_station_status"),
-            ("bronze\nstation_info", "silver\nstg_station_info"),
-            ("bronze\nweather", "silver\nstg_weather"),
-            ("silver\nstg_station_status", "silver\nint_station\navailability"),
-            ("silver\nstg_station_info", "silver\nint_station\navailability"),
-            ("silver\nstg_weather", "silver\nint_avail\nweather"),
-            ("silver\nint_station\navailability", "silver\nint_avail\nweather"),
-            ("silver\nint_station\navailability", "gold\nmart_station\nkpis"),
-            ("silver\nint_station\navailability", "gold\nmart_city\noverview"),
-            ("silver\nint_avail\nweather", "gold\nmart_weather\nimpact"),
-        ]
+together {
+  database "bronze\\nstation_status" as b_s #cd7f32
+  database "bronze\\nstation_info" as b_i #cd7f32
+  database "bronze\\nweather" as b_w #cd7f32
+}
 
-        layer_colors = {
-            "API": "#4CAF50",
-            "bronze": "#cd7f32",
-            "silver": "#9E9E9E",
-            "gold": "#FFC107",
-        }
+together {
+  component "silver\\nstg_station_status" as s_ss #silver
+  component "silver\\nstg_station_info" as s_si #silver
+  component "silver\\nstg_weather" as s_sw #silver
+}
 
-        ex, ey = [], []
-        for s, d in lineage_edges:
-            x0, y0 = lineage_nodes[s]
-            x1, y1 = lineage_nodes[d]
-            ex += [x0, x1, None]
-            ey += [y0, y1, None]
+together {
+  component "silver\\nint_station\\navailability" as s_av #silver
+  component "silver\\nint_avail\\nweather" as s_aw #silver
+}
 
-        nx_ = [v[0] for v in lineage_nodes.values()]
-        ny_ = [v[1] for v in lineage_nodes.values()]
-        nl = list(lineage_nodes.keys())
-        nc = [layer_colors[k.split("\n")[0]] for k in lineage_nodes]
+together {
+  database "gold\\nmart_station\\nkpis" as g_k #FFD700
+  database "gold\\nmart_city\\noverview" as g_c #FFD700
+  database "gold\\nmart_weather\\nimpact" as g_w #FFD700
+}
 
-        fig_lin = go.Figure()
-        fig_lin.add_trace(
-            go.Scatter(
-                x=ex,
-                y=ey,
-                mode="lines",
-                line=dict(width=2, color="#555"),
-                hoverinfo="none",
-            )
-        )
-        fig_lin.add_trace(
-            go.Scatter(
-                x=nx_,
-                y=ny_,
-                mode="markers+text",
-                text=nl,
-                textposition="middle center",
-                textfont=dict(size=9),
-                marker=dict(size=55, color=nc, line=dict(width=2, color="white")),
-                hoverinfo="text",
-            )
-        )
-        fig_lin.update_layout(
-            showlegend=False,
-            height=500,
-            margin=dict(t=10, b=10, l=10, r=10),
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            plot_bgcolor="rgba(0,0,0,0)",
-        )
-        st.plotly_chart(fig_lin, use_container_width=True)
-        st.caption("🟢 API sources — 🟤 Bronze (brut) — ⚪ Silver (nettoyé) — 🟡 Gold (analytique)")
+api_s --> b_s : ingestion async
+api_i --> b_i : ingestion async
+api_w --> b_w : ingestion async
+
+b_s --> s_ss : dbt staging
+b_i --> s_si : dbt staging
+b_w --> s_sw : dbt staging
+
+s_ss --> s_av : dbt intermediate
+s_si --> s_av : dbt intermediate
+s_av --> s_aw : dbt intermediate
+s_sw --> s_aw : dbt intermediate
+
+s_av --> g_k : dbt mart
+s_av --> g_c : dbt mart
+s_aw --> g_w : dbt mart
+@enduml
+"""
+        st.image(_plantuml_url(lineage), use_container_width=True)
+        st.caption("🔵 API sources — 🟤 Bronze — ⚪ Silver — 🟡 Gold")
 
         st.divider()
-        st.markdown("### Modèles dbt — résumé")
+        st.markdown("### Modèles dbt — 8 modèles")
         dbt_models = [
             {"Couche": "Silver", "Modèle": "stg_station_status", "Type": "VIEW", "Source": "bronze.station_status"},
             {"Couche": "Silver", "Modèle": "stg_station_info", "Type": "VIEW", "Source": "bronze.station_info"},
