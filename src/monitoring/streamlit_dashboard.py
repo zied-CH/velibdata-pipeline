@@ -793,6 +793,7 @@ skinparam class {
 skinparam package {
   BorderColor #7986CB
 }
+hide circle
 
 package "bronze" #ddeeff {
   class station_info <<TABLE>> {
