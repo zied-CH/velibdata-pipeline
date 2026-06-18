@@ -564,12 +564,6 @@ elif page == "Alertes & Coûts":
 
     # Budget
     st.subheader("💰 Suivi budgétaire Azure for Students")
-    st.info(
-        "**Comment lire le montant réel :** Azure Portal → Cost Management + Billing → Cost analysis → "
-        "Total cost ce mois. Entrer le montant ci-dessous.",
-        icon="ℹ️",
-    )
-
     budget_total = 100
     budget_used = st.slider(
         "Montant consommé ce mois (USD)",
