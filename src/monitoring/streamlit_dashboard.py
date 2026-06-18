@@ -293,50 +293,161 @@ elif page == "Ingestion":
 # ══════════════════════════════════════════════════════════════════
 
 elif page == "Qualité":
-    st.title("✅ Contrôle qualité des données")
+    st.title("✅ Qualité des données & Tests")
 
-    # Règles actives
-    st.subheader("Règles de qualité actives")
+    # ── KPIs globaux ─────────────────────────────────────────────
+    pytest_total = 19
+    pytest_passed = 19
+    dbt_total = 8
+    dbt_passed = 8
+    quality_rules_total = 6
+    quality_rules_passed = 6
+
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Tests Pytest", f"{pytest_passed}/{pytest_total}", "100% ✅")
+    k2.metric("Tests dbt", f"{dbt_passed}/{dbt_total}", "100% ✅")
+    k3.metric("Règles qualité", f"{quality_rules_passed}/{quality_rules_total}", "actives ✅")
+    k4.metric("Couverture code", "~60%", "src/quality 92%")
+
+    st.divider()
+
+    # ── Tests Pytest ──────────────────────────────────────────────
+    st.subheader("🧪 Tests unitaires Pytest — 19 tests")
+    st.caption("Lancés automatiquement à chaque push GitHub · `uv run pytest --tb=short -q`")
+
+    pytest_groups = {
+        "validate_station_payload": [
+            ("test_validate_station_payload_ok", "payload 1412 stations → aucune exception", "✅ PASS"),
+            ("test_validate_station_payload_zero_raises", "0 stations → ValueError levée", "✅ PASS"),
+            ("test_validate_station_payload_low_logs_warning", "<100 stations → warning loggé", "✅ PASS"),
+            ("test_validate_station_payload_missing_schema_key_raises", "clé manquante → ValueError", "✅ PASS"),
+        ],
+        "validate_weather_payload": [
+            ("test_validate_weather_payload_ok", "payload météo valide → pas d'erreur", "✅ PASS"),
+            ("test_validate_weather_payload_empty_data_raises", "data=None → ValueError", "✅ PASS"),
+            ("test_validate_weather_payload_missing_schema_raises", "clé source manquante → ValueError", "✅ PASS"),
+        ],
+        "_validate_schema": [
+            ("test_validate_schema_ok", "toutes les clés présentes → pas d'erreur", "✅ PASS"),
+            ("test_validate_schema_missing_key_raises", "clé manquante → ValueError", "✅ PASS"),
+            ("test_validate_schema_extra_keys_ok", "clés supplémentaires → pas d'erreur", "✅ PASS"),
+        ],
+        "_validate_no_duplicates": [
+            ("test_validate_no_duplicates_ok", "100 stations uniques → pas d'erreur", "✅ PASS"),
+            ("test_validate_no_duplicates_raises", "station_id dupliqué → ValueError", "✅ PASS"),
+            ("test_validate_no_duplicates_empty_list", "liste vide → pas d'erreur", "✅ PASS"),
+        ],
+        "_validate_critical_fields": [
+            ("test_validate_critical_fields_ok", "champs critiques présents → pas d'erreur", "✅ PASS"),
+            ("test_validate_critical_fields_all_null_raises", "100% nulls → ValueError", "✅ PASS"),
+            ("test_validate_critical_fields_high_null_rate_no_raise", "6% nulls → warning, pas d'erreur", "✅ PASS"),
+            ("test_validate_critical_fields_empty_list", "liste vide → pas d'erreur", "✅ PASS"),
+        ],
+        "config": [
+            ("test_api_settings_defaults", "URLs Vélib et OpenMeteo chargées correctement", "✅ PASS"),
+            ("test_azure_settings_defaults", "ADLS containers par défaut corrects", "✅ PASS"),
+        ],
+    }
+
+    for group_name, tests in pytest_groups.items():
+        with st.expander(f"**{group_name}** — {len(tests)} tests", expanded=False):
+            df = pd.DataFrame(tests, columns=["Nom du test", "Ce que ça vérifie", "Résultat"])
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+    # Barre de progression globale
+    st.progress(pytest_passed / pytest_total, text=f"{pytest_passed}/{pytest_total} tests passés")
+
+    st.divider()
+
+    # ── Tests dbt ────────────────────────────────────────────────
+    st.subheader("🔷 Tests dbt — schema.yml")
+    st.caption("Lancés par Azure Data Factory après chaque transformation · `/api/test-dbt`")
+
+    dbt_tests_data = [
+        ("Silver", "stg_station_info", "unique", "station_id", "Un seul enreg. par station", "✅ PASS"),
+        ("Silver", "stg_station_info", "not_null", "station_id, name, lat, lon", "Champs obligatoires", "✅ PASS"),
+        ("Silver", "stg_station_status", "not_null", "station_id, bikes_available", "Dispo complète", "✅ PASS"),
+        ("Silver", "stg_station_status", "relationships", "station_id → stg_station_info", "Intégrité réf.", "✅ PASS"),
+        ("Silver", "stg_weather", "not_null", "measured_at, temperature_celsius", "Météo complète", "✅ PASS"),
+        ("Silver", "int_station_availability", "accepted_values", "availability_status", "Valeurs valides", "✅ PASS"),
+        ("Gold", "mart_station_kpis", "unique", "station_id", "1 ligne par station", "✅ PASS"),
+        ("Gold", "mart_weather_impact", "accepted_values", "weather_category", "Catégories valides", "✅ PASS"),
+    ]
+
+    df_dbt = pd.DataFrame(
+        dbt_tests_data,
+        columns=["Couche", "Modèle", "Type de test", "Colonne(s)", "Ce que ça garantit", "Résultat"],
+    )
+
+    silver_tests = df_dbt[df_dbt["Couche"] == "Silver"]
+    gold_tests = df_dbt[df_dbt["Couche"] == "Gold"]
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Couche Silver**")
+        st.dataframe(silver_tests.drop(columns=["Couche"]), use_container_width=True, hide_index=True)
+    with col2:
+        st.markdown("**Couche Gold**")
+        st.dataframe(gold_tests.drop(columns=["Couche"]), use_container_width=True, hide_index=True)
+
+    st.progress(dbt_passed / dbt_total, text=f"{dbt_passed}/{dbt_total} tests dbt passés")
+
+    st.divider()
+
+    # ── Règles qualité données ────────────────────────────────────
+    st.subheader("🛡️ Règles qualité — appliquées avant écriture Bronze")
+    st.caption("Déclenchées dans `src/quality/checks.py` — bloquent l'ingestion si violation")
+
     rules = [
-        {"Règle": "row_count > 0", "Statut": "✅ OK", "Description": "Aucune donnée vide acceptée"},
-        {"Règle": "station_count ≥ 100", "Statut": "✅ OK", "Description": "Volume minimum Vélib Paris"},
-        {"Règle": "Pas de doublons station_id", "Statut": "✅ OK", "Description": "Unicité garantie"},
-        {"Règle": "Nulls critiques ≤ 5%", "Statut": "✅ OK", "Description": "Champs : station_id, num_bikes_available"},
-        {"Règle": "Schéma API valide", "Statut": "✅ OK", "Description": "Détecte les changements de structure API"},
-        {"Règle": "Retry auto × 3", "Statut": "✅ OK", "Description": "30s → 60s → 120s backoff"},
+        {"Règle": "row_count > 0", "Statut": "✅ Actif", "Bloquant": "Oui", "Description": "Refuse tout payload vide"},
+        {
+            "Règle": "station_count ≥ 100",
+            "Statut": "✅ Actif",
+            "Bloquant": "Non",
+            "Description": "Vélib Paris = ~1400 stations",
+        },
+        {
+            "Règle": "Pas de doublons station_id",
+            "Statut": "✅ Actif",
+            "Bloquant": "Oui",
+            "Description": "Unicité garantie avant écriture",
+        },
+        {
+            "Règle": "Nulls critiques ≤ 5%",
+            "Statut": "✅ Actif",
+            "Bloquant": "Oui (si 100%)",
+            "Description": "Champs : station_id, num_bikes_available",
+        },
+        {
+            "Règle": "Schéma API valide",
+            "Statut": "✅ Actif",
+            "Bloquant": "Oui",
+            "Description": "Détecte ruptures de contrat API",
+        },
+        {
+            "Règle": "Retry automatique × 3",
+            "Statut": "✅ Actif",
+            "Bloquant": "Non",
+            "Description": "Backoff 30s → 60s → 120s",
+        },
     ]
     st.dataframe(pd.DataFrame(rules), use_container_width=True, hide_index=True)
 
     st.divider()
 
-    # Tests dbt
-    st.subheader("Tests dbt (schema.yml)")
-    dbt_tests = [
-        {"Modèle": "stg_station_info", "Test": "unique(station_id)", "Statut": "✅"},
-        {"Modèle": "stg_station_info", "Test": "not_null(station_id, name, lat, lon)", "Statut": "✅"},
-        {"Modèle": "stg_station_status", "Test": "not_null(station_id, bikes_available)", "Statut": "✅"},
-        {"Modèle": "stg_station_status", "Test": "relationships(station_id → stg_station_info)", "Statut": "✅"},
-        {"Modèle": "stg_weather", "Test": "not_null(measured_at, temperature_celsius)", "Statut": "✅"},
-        {"Modèle": "int_station_availability", "Test": "accepted_values(availability_status)", "Statut": "✅"},
-        {"Modèle": "mart_station_kpis", "Test": "unique(station_id)", "Statut": "✅"},
-        {"Modèle": "mart_weather_impact", "Test": "accepted_values(weather_category)", "Statut": "✅"},
-    ]
-    st.dataframe(pd.DataFrame(dbt_tests), use_container_width=True, hide_index=True)
-
-    st.divider()
-
-    # Simulation fill_rate
-    st.subheader("Distribution du taux de remplissage (stations)")
+    # ── Distribution fill_rate ────────────────────────────────────
+    st.subheader("📊 Distribution taux de remplissage (données simulées)")
     fig = px.histogram(
         df_stations,
         x="fill_rate_pct",
         nbins=20,
         labels={"fill_rate_pct": "Taux de remplissage (%)"},
-        color_discrete_sequence=["#1f77b4"],
+        color_discrete_sequence=["#3F51B5"],
+        title="Répartition des 1400 stations par taux de remplissage",
     )
     fig.add_vline(x=20, line_dash="dash", line_color="orange", annotation_text="Seuil bas (20%)")
     fig.add_vline(x=80, line_dash="dash", line_color="red", annotation_text="Seuil haut (80%)")
-    fig.update_layout(height=300, margin=dict(t=10))
+    fig.update_layout(height=320, margin=dict(t=40, b=10))
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -452,49 +563,90 @@ elif page == "Alertes & Coûts":
     st.divider()
 
     # Budget
-    st.subheader("Suivi budgétaire Azure for Students")
-    col1, col2 = st.columns(2)
+    st.subheader("💰 Suivi budgétaire Azure for Students")
+    st.info(
+        "**Comment lire le montant réel :** Azure Portal → Cost Management + Billing → Cost analysis → "
+        "Total cost ce mois. Entrer le montant ci-dessous.",
+        icon="ℹ️",
+    )
+
+    budget_total = 100
+    budget_used = st.slider(
+        "Montant consommé ce mois (USD)",
+        min_value=0,
+        max_value=100,
+        value=15,
+        step=1,
+        help="Valeur lue manuellement dans Azure Cost Management",
+    )
+    pct = budget_used / budget_total * 100
+    budget_restant = budget_total - budget_used
+
+    # Jauge + métriques
+    col1, col2 = st.columns([3, 2])
 
     with col1:
-        budget_total = 100
-        budget_used = st.number_input("Budget consommé (USD)", 0, 100, 15)
-        pct = budget_used / budget_total * 100
+        if pct < 50:
+            bar_color = "#4CAF50"
+        elif pct < 80:
+            bar_color = "#FF9800"
+        else:
+            bar_color = "#F44336"
 
         fig = go.Figure(
             go.Indicator(
-                mode="gauge+number+delta",
+                mode="gauge+number",
                 value=pct,
-                title={"text": "Budget consommé (%)"},
-                delta={"reference": 80, "decreasing": {"color": "green"}},
+                number={"suffix": "%", "font": {"size": 40}},
+                title={"text": "Budget consommé", "font": {"size": 16}},
                 gauge={
-                    "axis": {"range": [0, 100]},
-                    "bar": {"color": "darkblue"},
+                    "axis": {"range": [0, 100], "ticksuffix": "%"},
+                    "bar": {"color": bar_color},
                     "steps": [
-                        {"range": [0, 50], "color": "lightgreen"},
-                        {"range": [50, 80], "color": "yellow"},
-                        {"range": [80, 100], "color": "red"},
+                        {"range": [0, 50], "color": "#E8F5E9"},
+                        {"range": [50, 80], "color": "#FFF9C4"},
+                        {"range": [80, 100], "color": "#FFEBEE"},
                     ],
                     "threshold": {
-                        "line": {"color": "red", "width": 4},
+                        "line": {"color": "#F44336", "width": 3},
                         "thickness": 0.75,
                         "value": 80,
                     },
                 },
             )
         )
-        fig.update_layout(height=280, margin=dict(t=30, b=10))
+        fig.update_layout(height=260, margin=dict(t=40, b=10, l=20, r=20))
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
         st.metric("Budget total", f"${budget_total}")
-        st.metric("Budget consommé", f"${budget_used}", delta=f"{pct:.1f}%")
-        st.metric("Budget restant", f"${budget_total - budget_used}")
-        if pct >= 80:
-            st.error("⚠️ Alerte budget déclenchée !")
+        st.metric("Consommé", f"${budget_used}", delta=f"{pct:.0f}% du budget", delta_color="inverse")
+        st.metric("Restant", f"${budget_restant}")
+
+        st.markdown("---")
+        if pct >= 100:
+            st.error("🚨 Budget épuisé — alerte 100% déclenchée")
+        elif pct >= 80:
+            st.error("⚠️ Seuil 80% atteint — alerte déclenchée")
         elif pct >= 50:
-            st.warning("Attention : 50% du budget atteint")
+            st.warning("📊 Seuil 50% atteint — surveiller")
         else:
-            st.success("Budget sous contrôle")
+            st.success("✅ Budget sous contrôle")
+
+    # Seuils d'alerte visuels
+    st.markdown("**Seuils d'alerte configurés dans Azure Monitor :**")
+    thresholds = [
+        ("50%", 50, pct >= 50, "🟡"),
+        ("80%", 80, pct >= 80, "🟠"),
+        ("95%", 95, pct >= 95, "🔴"),
+        ("100%", 100, pct >= 100, "🚨"),
+    ]
+    cols = st.columns(4)
+    for col, (label, val, fired, _icon) in zip(cols, thresholds, strict=False):
+        with col:
+            status = "**DÉCLENCHÉ**" if fired else "en attente"
+            color = "🔴" if fired else "🟢"
+            st.markdown(f"{color} **{label}**  \n${val} dépensés  \n{status}")
 
     st.divider()
 
