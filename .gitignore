@@ -40,3 +40,5 @@ plan_output.txt
 # .terraform.lock.hcl doit être commité — le gitignorer cause exit code 3 en CI
 logs/
 sudo dpkg*
+.env.save
+.ruff_cache/

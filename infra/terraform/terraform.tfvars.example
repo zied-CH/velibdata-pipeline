@@ -14,3 +14,4 @@ adf_name                = "adf-velib-1c53"        # globally unique
 alert_email       = "your-email@epsi.fr"
 budget_amount     = 100
 budget_start_date = "2026-05-01T00:00:00Z"
+deployer_ip = "YOUR_PUBLIC_IP"

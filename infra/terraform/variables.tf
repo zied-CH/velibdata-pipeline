@@ -69,3 +69,8 @@ variable "teams_webhook_url" {
   default     = ""
   sensitive   = true
 }
+
+variable "deployer_ip" {
+  description = "IP publique du poste admin pour accéder à ADLS (Terraform + Streamlit local)"
+  type        = string
+}

@@ -9,11 +9,12 @@ module "foundation" {
 module "storage" {
   source = "./modules/storage"
 
-  resource_group_name   = var.resource_group_name
-  location              = var.location
-  storage_account_name  = var.storage_account_name
+  resource_group_name    = var.resource_group_name
+  location               = var.location
+  storage_account_name   = var.storage_account_name
   current_user_object_id = module.foundation.current_user_object_id
-  key_vault_id          = module.foundation.key_vault_id
+  key_vault_id           = module.foundation.key_vault_id
+  deployer_ip            = var.deployer_ip
 
   depends_on = [module.foundation]
 }
